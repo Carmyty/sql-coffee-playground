@@ -1,69 +1,147 @@
-import Image from "next/image";
+"use client";
 
-export default function Home() {
+import Link from "next/link";
+import { AppShell } from "@/components/layout/app-shell";
+import { LEARNING_MODULES } from "@/data/modules";
+import { ALL_EXERCISES, getModuleExercises } from "@/data/exercises";
+import { conceptOfTheDay } from "@/data/lessons";
+import { useProgress } from "@/hooks/use-progress";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Progress } from "@/components/ui/progress";
+
+export default function DashboardPage() {
+  const { completedCount, inProgressCount, recentExercises, getExercise, state } = useProgress();
+  const percent = Math.round((completedCount / Math.max(ALL_EXERCISES.length, 1)) * 100);
+  const concept = conceptOfTheDay();
+  const nextExercise =
+    ALL_EXERCISES.find((exercise) => getExercise(exercise.id).status !== "correct") || ALL_EXERCISES[0];
+  const completedModules = LEARNING_MODULES.filter((module) => {
+    const exercises = getModuleExercises(module.id);
+    return exercises.length > 0 && exercises.every((exercise) => getExercise(exercise.id).status === "correct");
+  }).length;
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert h-5 w-[100px]"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the{" "}
-            <code className="rounded bg-black/[.06] px-1.5 py-0.5 font-mono text-[0.9em] dark:bg-white/[.08]">
-              page.tsx
-            </code>{" "}
-            file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert h-[14px] w-4"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={14}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
-    </div>
+    <AppShell title="Dashboard">
+      <div className="animate-fade-up space-y-6">
+        <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+          <Card>
+            <CardHeader>
+              <CardDescription>Progreso total</CardDescription>
+              <CardTitle className="text-3xl">{percent}%</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Progress value={percent} />
+              <p className="mt-2 text-xs text-[color:var(--muted-text)]">
+                {completedCount} de {ALL_EXERCISES.length} ejercicios correctos
+              </p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader>
+              <CardDescription>Módulos completados</CardDescription>
+              <CardTitle className="text-3xl">
+                {completedModules}/{LEARNING_MODULES.length}
+              </CardTitle>
+            </CardHeader>
+          </Card>
+          <Card>
+            <CardHeader>
+              <CardDescription>En progreso</CardDescription>
+              <CardTitle className="text-3xl">{inProgressCount}</CardTitle>
+            </CardHeader>
+          </Card>
+          <Card>
+            <CardHeader>
+              <CardDescription>Racha</CardDescription>
+              <CardTitle className="text-3xl">{state.streak} días</CardTitle>
+            </CardHeader>
+          </Card>
+        </section>
+
+        <section className="grid gap-4 lg:grid-cols-[1.4fr_1fr]">
+          <Card>
+            <CardHeader>
+              <CardTitle>Siguiente recomendado</CardTitle>
+              <CardDescription>Continúa donde el camino tiene más sentido.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="flex flex-wrap items-center gap-2">
+                <Badge>{nextExercise.difficulty}</Badge>
+                <Badge variant="outline">{nextExercise.estimatedMinutes} min</Badge>
+              </div>
+              <h2 className="font-[family-name:var(--font-display)] text-2xl text-[color:var(--coffee-dark)]">
+                {nextExercise.title}
+              </h2>
+              <p className="text-sm text-[color:var(--muted-text)]">{nextExercise.objective}</p>
+              <Button render={<Link href={`/learn/${nextExercise.moduleId}/${nextExercise.id}`} />}>
+                Abrir ejercicio
+              </Button>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader>
+              <CardTitle>Concepto del día</CardTitle>
+              <CardDescription>{concept.title}</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3 text-sm">
+              <p>{concept.summary}</p>
+              <Button variant="outline" render={<Link href={`/lessons/${concept.id}`} />}>
+                Leer mini lección
+              </Button>
+            </CardContent>
+          </Card>
+        </section>
+
+        <section className="grid gap-4 lg:grid-cols-2">
+          <Card>
+            <CardHeader>
+              <CardTitle>Últimos ejercicios visitados</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              {recentExercises.length === 0 ? (
+                <p className="text-sm text-[color:var(--muted-text)]">
+                  Aún no hay actividad. Empieza por el módulo de fundamentos.
+                </p>
+              ) : (
+                recentExercises.map((id) => {
+                  const exercise = ALL_EXERCISES.find((item) => item.id === id);
+                  if (!exercise) return null;
+                  const progress = getExercise(id);
+                  return (
+                    <Link
+                      key={id}
+                      href={`/learn/${exercise.moduleId}/${exercise.id}`}
+                      className="flex items-center justify-between rounded-xl border border-[color:var(--cream)] px-3 py-2 text-sm hover:bg-[color:var(--cream)]/50"
+                    >
+                      <span>{exercise.title}</span>
+                      <Badge variant="outline">{progress.status}</Badge>
+                    </Link>
+                  );
+                })
+              )}
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader>
+              <CardTitle>Ruta rápida</CardTitle>
+              <CardDescription>Explora módulos, datos y el laboratorio libre.</CardDescription>
+            </CardHeader>
+            <CardContent className="flex flex-wrap gap-2">
+              <Button variant="outline" render={<Link href="/learn" />}>
+                Ruta de aprendizaje
+              </Button>
+              <Button variant="outline" render={<Link href="/explore" />}>
+                Explorar datos
+              </Button>
+              <Button variant="outline" render={<Link href="/lab" />}>
+                Laboratorio
+              </Button>
+            </CardContent>
+          </Card>
+        </section>
+      </div>
+    </AppShell>
   );
 }

@@ -128,3 +128,43 @@
     @apply font-sans;
   }
 }
+:root {
+  --page-bg: #f7f3ee;
+  --cream: #efe6da;
+  --coffee-dark: #3e2723;
+  --coffee-mid: #6d4c41;
+  --terracotta: #c06a4d;
+  --muted-text: #6b635c;
+  --success: #2f9e6b;
+  --warning: #d4a017;
+  --danger: #c44536;
+  --font-display: var(--font-display), "Fraunces", serif;
+}
+
+.dark {
+  --page-bg: #1c1612;
+  --cream: #2a221c;
+  --coffee-dark: #f3ebe3;
+  --coffee-mid: #d7b29d;
+  --terracotta: #e08b6d;
+  --muted-text: #b9aea4;
+  --background: #1c1612;
+  --foreground: #f3ebe3;
+  --card: #241c17;
+  --card-foreground: #f3ebe3;
+  --primary: #d7b29d;
+  --primary-foreground: #1c1612;
+  --muted: #2a221c;
+  --muted-foreground: #b9aea4;
+  --border: #3a2f28;
+  --input: #3a2f28;
+}
+
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fade-up {
+  animation: fade-up 0.45s ease-out both;
+}

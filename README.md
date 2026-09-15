@@ -1,36 +1,72 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# SQL Coffee Playground
 
-## Getting Started
+App web para practicar SQL con una base de datos de cadena de cafeterías (`coffee_chain`). Incluye módulos progresivos, pistas locales (sin IA), explorador de esquema, laboratorio libre y un sandbox de escritura (`sql_playground`).
 
-First, run the development server:
+## Stack
+
+- Next.js (App Router) + TypeScript + Tailwind CSS + shadcn/ui
+- PostgreSQL + Prisma
+- CodeMirror para el editor SQL
+- Vitest para tests unitarios
+
+## Requisitos
+
+- Node.js 20+
+- PostgreSQL 14+
+
+## Configuración local
 
 ```bash
+cp .env.example .env
+# Edita DATABASE_URL con tu usuario/clave/host
+npm install
+npm run db:migrate
+npm run db:seed
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+La app arranca en [http://127.0.0.1:3456](http://127.0.0.1:3456).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### Variables de entorno
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+| Variable | Descripción |
+| --- | --- |
+| `DATABASE_URL` | Cadena PostgreSQL (obligatoria) |
+| `SQL_DEFAULT_SCHEMA` | Esquema de lectura (default `coffee_chain`) |
+| `SQL_SANDBOX_SCHEMA` | Esquema de escritura (default `sql_playground`) |
+| `SQL_MAX_ROWS` | Tope de filas devueltas |
+| `SQL_STATEMENT_TIMEOUT_MS` | Timeout por consulta |
 
-## Learn More
+## Qué incluye
 
-To learn more about Next.js, take a look at the following resources:
+- **Aprender:** ~60 ejercicios por temas (SELECT, JOIN, GROUP BY, subconsultas, ventana, DML seguro, etc.)
+- **Barra de precisión en vivo:** mientras escribes, una barra verde/ámbar/roja orienta con heurísticas locales (palabras clave pedidas, tablas sugeridas, señales estructurales). **No usa IA** y **no exige una query idéntica** a la de referencia: la validación final es por resultado al ejecutar.
+- **Explorar:** esquema vía `information_schema`, columnas, FKs y preview de datos
+- **Lab:** consultas libres; lectura en `coffee_chain`, mutaciones solo en `sql_playground`
+- **Lecciones:** teoría corta ligada a cada módulo
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Seguridad SQL
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+- Solo un statement por ejecución
+- SELECT contra `coffee_chain`
+- INSERT/UPDATE/DELETE solo en `sql_playground`, con `WHERE` obligatorio en UPDATE/DELETE
+- Bloqueo de DDL peligroso (`DROP SCHEMA`, etc.) y timeout/límite de filas
+- Reset del sandbox desde el lab
 
-## Deploy on Vercel
+## Scripts
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+```bash
+npm run dev          # http://127.0.0.1:3456
+npm run build
+npm run lint
+npm run typecheck
+npm test
+npm run db:migrate
+npm run db:seed
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Deploy (Vercel)
+
+1. Conecta el repo y define `DATABASE_URL` (y opcionalmente las variables `SQL_*`).
+2. Build: `prisma generate && next build` (ya cubierto por `postinstall` + `next build`).
+3. Ejecuta migraciones y seed una vez contra la base remota (`npm run db:migrate && npm run db:seed`).

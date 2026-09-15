@@ -1,8 +1,7 @@
 import { ALL_EXERCISES, getExercise } from "@/data/exercises";
-import { getSandboxSchema } from "@/lib/db";
+import { getSandboxSchema, prisma } from "@/lib/db";
 import { executeSql } from "@/lib/sql-executor";
 import { columnExists, tableExists } from "@/lib/sandbox";
-import { prisma } from "@/lib/db";
 import { validateAttempt, type ValidationOutput } from "@/lib/sql-validator";
 import type { Exercise } from "@/data/types";
 

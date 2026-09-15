@@ -24,13 +24,13 @@ export default function LessonDetailPage() {
         <Card>
           <CardHeader>
             <Badge variant="outline">{lesson.minutes} min de lectura</Badge>
-            <CardTitle className="font-[family-name:var(--font-display)] text-3xl">{lesson.title}</CardTitle>
+            <CardTitle className="font-[family-name:var(--font-display)] text-2xl sm:text-3xl">{lesson.title}</CardTitle>
             <CardDescription>{lesson.summary}</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4 text-sm leading-relaxed">
             <div>
               <p className="mb-1 font-medium">Estructura</p>
-              <pre className="overflow-auto rounded-lg bg-[color:var(--coffee-dark)] p-3 text-[color:var(--cream)]">
+              <pre className="overflow-x-auto whitespace-pre-wrap break-words rounded-lg bg-[color:var(--coffee-dark)] p-3 text-[color:var(--cream)]">
                 {lesson.structure}
               </pre>
             </div>
@@ -63,7 +63,7 @@ export default function LessonDetailPage() {
               <Button
                 key={option}
                 variant={selected === index ? "default" : "outline"}
-                className="w-full justify-start"
+                className="h-auto min-h-11 w-full justify-start whitespace-normal py-2 text-left"
                 onClick={() => setSelected(index)}
               >
                 {option}

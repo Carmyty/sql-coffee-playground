@@ -13,37 +13,43 @@ export function AppTopbar({ title }: { title?: string }) {
   const percent = Math.round((completedCount / Math.max(ALL_EXERCISES.length, 1)) * 100);
 
   return (
-    <header className="flex flex-col gap-3 border-b border-[color:var(--cream)] bg-white/80 px-4 py-3 backdrop-blur md:flex-row md:items-center md:justify-between md:px-6">
-      <div>
-        <p className="text-xs uppercase tracking-[0.18em] text-[color:var(--muted-text)]">SQL Coffee Playground</p>
-        <h1 className="font-[family-name:var(--font-display)] text-xl text-[color:var(--coffee-dark)] md:text-2xl">
-          {title || "Aprende SQL con una cafetería"}
-        </h1>
-      </div>
-      <div className="flex flex-wrap items-center gap-3">
-        <div className="min-w-[160px] flex-1 md:min-w-[200px]">
-          <div className="mb-1 flex items-center justify-between text-xs text-[color:var(--muted-text)]">
-            <span>Progreso</span>
-            <span>{percent}%</span>
+    <header className="shrink-0 border-b border-[color:var(--cream)] bg-white/80 px-3 py-2.5 backdrop-blur sm:px-4 md:px-6 md:py-3">
+      <div className="flex items-center justify-between gap-3">
+        <div className="min-w-0">
+          <p className="hidden text-xs uppercase tracking-[0.18em] text-[color:var(--muted-text)] sm:block">
+            SQL Coffee Playground
+          </p>
+          <h1 className="truncate font-[family-name:var(--font-display)] text-lg text-[color:var(--coffee-dark)] sm:text-xl md:text-2xl">
+            {title || "Aprende SQL con una cafetería"}
+          </h1>
+        </div>
+        <div className="flex shrink-0 items-center gap-2">
+          <div
+            className="inline-flex min-h-11 items-center gap-1.5 rounded-full bg-[color:var(--cream)] px-2.5 py-1.5 text-sm text-[color:var(--coffee-dark)] md:min-h-0 md:px-3"
+            title="Racha de días activos"
+          >
+            <Flame className="size-4 text-[color:var(--terracotta)]" aria-hidden />
+            <span className="tabular-nums">{state.streak}</span>
+            <span className="hidden sm:inline">días</span>
           </div>
-          <Progress value={percent} className="w-full" />
+          <Button
+            variant="outline"
+            size="icon"
+            className="size-11 md:size-8"
+            aria-label="Cambiar tema claro u oscuro"
+            onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+          >
+            <Sun className="size-4 dark:hidden" />
+            <Moon className="hidden size-4 dark:block" />
+          </Button>
         </div>
-        <div
-          className="inline-flex items-center gap-1.5 rounded-full bg-[color:var(--cream)] px-3 py-1.5 text-sm text-[color:var(--coffee-dark)]"
-          title="Racha de días activos"
-        >
-          <Flame className="size-4 text-[color:var(--terracotta)]" aria-hidden />
-          {state.streak} días
+      </div>
+      <div className="mt-2 min-w-0">
+        <div className="mb-1 flex items-center justify-between text-xs text-[color:var(--muted-text)]">
+          <span>Progreso</span>
+          <span className="tabular-nums">{percent}%</span>
         </div>
-        <Button
-          variant="outline"
-          size="icon"
-          aria-label="Cambiar tema claro u oscuro"
-          onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-        >
-          <Sun className="size-4 dark:hidden" />
-          <Moon className="hidden size-4 dark:block" />
-        </Button>
+        <Progress value={percent} className="w-full" />
       </div>
     </header>
   );

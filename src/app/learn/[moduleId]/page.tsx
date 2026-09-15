@@ -23,7 +23,7 @@ export default async function ModulePage({
       <div className="animate-fade-up space-y-4">
         <Card>
           <CardHeader>
-            <CardTitle className="font-[family-name:var(--font-display)] text-2xl">{learningModule.title}</CardTitle>
+            <CardTitle className="font-[family-name:var(--font-display)] text-xl sm:text-2xl">{learningModule.title}</CardTitle>
             <CardDescription>{learningModule.description}</CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
@@ -46,7 +46,7 @@ export default async function ModulePage({
                 <CardTitle className="text-lg">
                   <Link
                     href={`/learn/${learningModule.id}/${exercise.id}`}
-                    className="hover:text-[color:var(--terracotta)]"
+                    className="break-words hover:text-[color:var(--terracotta)]"
                   >
                     {exercise.title}
                   </Link>

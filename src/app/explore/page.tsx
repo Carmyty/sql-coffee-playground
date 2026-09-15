@@ -93,13 +93,13 @@ export default function ExplorePage() {
   return (
     <AppShell title="Explorar datos">
       <div className="animate-fade-up space-y-4">
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
           <label className="text-sm" htmlFor="schema-select">
             Esquema
           </label>
           <select
             id="schema-select"
-            className="rounded-lg border bg-white px-3 py-2 text-sm"
+            className="min-h-11 w-full rounded-lg border bg-white px-3 py-2 text-base sm:w-auto sm:min-h-0 sm:text-sm"
             value={schema}
             onChange={(event) => setSchema(event.target.value)}
           >
@@ -110,7 +110,7 @@ export default function ExplorePage() {
             ))}
           </select>
           <Input
-            className="max-w-sm"
+            className="min-h-11 w-full text-base sm:max-w-sm md:min-h-8 md:text-sm"
             placeholder="Buscar tablas o columnas"
             value={search}
             onChange={(event) => setSearch(event.target.value)}
@@ -125,32 +125,49 @@ export default function ExplorePage() {
           </Alert>
         ) : null}
 
-        <div className="grid gap-4 lg:grid-cols-[260px_minmax(0,1fr)]">
+        <div className="grid min-w-0 gap-4 lg:grid-cols-[260px_minmax(0,1fr)]">
           <Card>
             <CardHeader>
               <CardTitle>Tablas</CardTitle>
               <CardDescription>{filtered.length} encontradas</CardDescription>
             </CardHeader>
-            <CardContent className="max-h-[70vh] space-y-1 overflow-auto">
-              {filtered.map((table) => (
-                <Button
-                  key={table.name}
-                  variant={selected === table.name ? "default" : "ghost"}
-                  className="w-full justify-start"
-                  onClick={() => setSelected(table.name)}
-                >
-                  {table.name}
-                </Button>
-              ))}
+            <CardContent className="space-y-2">
+              <label className="sr-only" htmlFor="table-select">
+                Seleccionar tabla
+              </label>
+              <select
+                id="table-select"
+                className="min-h-11 w-full rounded-lg border bg-white px-3 py-2 text-base lg:hidden"
+                value={selected ?? ""}
+                onChange={(event) => setSelected(event.target.value || null)}
+              >
+                {filtered.map((table) => (
+                  <option key={table.name} value={table.name}>
+                    {table.name}
+                  </option>
+                ))}
+              </select>
+              <div className="hidden max-h-[70vh] space-y-1 overflow-auto lg:block">
+                {filtered.map((table) => (
+                  <Button
+                    key={table.name}
+                    variant={selected === table.name ? "default" : "ghost"}
+                    className="w-full justify-start"
+                    onClick={() => setSelected(table.name)}
+                  >
+                    <span className="truncate">{table.name}</span>
+                  </Button>
+                ))}
+              </div>
             </CardContent>
           </Card>
 
-          <div className="space-y-4">
+          <div className="min-w-0 space-y-4">
             {current ? (
               <>
                 <Card>
                   <CardHeader>
-                    <CardTitle className="font-[family-name:var(--font-display)] text-2xl">
+                    <CardTitle className="break-all font-[family-name:var(--font-display)] text-xl sm:text-2xl">
                       {current.name}
                     </CardTitle>
                     <CardDescription>
@@ -189,7 +206,7 @@ export default function ExplorePage() {
                       graph?.relations
                         .filter((rel) => rel.from === current.name || rel.to === current.name)
                         .map((rel) => (
-                          <p key={`${rel.from}-${rel.fromColumn}-${rel.to}`}>
+                          <p key={`${rel.from}-${rel.fromColumn}-${rel.to}`} className="break-all">
                             {rel.from}.{rel.fromColumn} → {rel.to}.{rel.toColumn}
                           </p>
                         ))

@@ -29,19 +29,31 @@ export function SqlEditor({
   ariaLabel = "Editor SQL",
   placeholder = "Escribe tu consulta SQL aquí…\nEjemplo: SELECT * FROM customers;",
 }: SqlEditorProps) {
+  // Plain textarea by default so practice always works (CodeMirror can steal focus in some clients).
+  const [useHighlight, setUseHighlight] = useState(false);
   const [mounted, setMounted] = useState(false);
-  const [preferPlain, setPreferPlain] = useState(false);
 
   useEffect(() => {
     setMounted(true);
   }, []);
 
-  if (!mounted || preferPlain) {
+  if (!useHighlight) {
     return (
       <div className="space-y-2">
-        <label className="text-sm font-medium text-[color:var(--coffee-dark)]" htmlFor="sql-plain-editor">
-          Tu consulta SQL
-        </label>
+        <div className="flex items-center justify-between gap-2">
+          <label className="text-sm font-medium text-[color:var(--coffee-dark)]" htmlFor="sql-plain-editor">
+            Tu consulta SQL
+          </label>
+          {mounted ? (
+            <button
+              type="button"
+              className="text-xs text-[color:var(--muted-text)] underline"
+              onClick={() => setUseHighlight(true)}
+            >
+              Usar resaltado
+            </button>
+          ) : null}
+        </div>
         <textarea
           id="sql-plain-editor"
           value={value}
@@ -52,15 +64,6 @@ export function SqlEditor({
           className="min-h-[280px] w-full resize-y rounded-xl border-2 border-[color:var(--coffee-mid)] bg-white p-4 font-mono text-sm leading-6 text-[color:var(--coffee-dark)] shadow-sm outline-none ring-[color:var(--terracotta)] placeholder:text-[color:var(--muted-text)] focus:ring-2"
           style={{ height }}
         />
-        {mounted ? (
-          <button
-            type="button"
-            className="text-xs text-[color:var(--muted-text)] underline"
-            onClick={() => setPreferPlain(false)}
-          >
-            Usar editor con resaltado
-          </button>
-        ) : null}
       </div>
     );
   }
@@ -72,7 +75,7 @@ export function SqlEditor({
         <button
           type="button"
           className="text-xs text-[color:var(--muted-text)] underline"
-          onClick={() => setPreferPlain(true)}
+          onClick={() => setUseHighlight(false)}
         >
           Editor simple
         </button>

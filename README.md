@@ -67,6 +67,27 @@ npm run db:seed
 
 ## Deploy (Vercel)
 
-1. Conecta el repo y define `DATABASE_URL` (y opcionalmente las variables `SQL_*`).
-2. Build: `prisma generate && next build` (ya cubierto por `postinstall` + `next build`).
-3. Ejecuta migraciones y seed una vez contra la base remota (`npm run db:migrate && npm run db:seed`).
+1. Crea un Postgres alojado (Neon, Supabase o Vercel Postgres) y copia la `DATABASE_URL`.
+2. En Vercel → Project → Settings → Environment Variables:
+   - `DATABASE_URL` (obligatoria, connection string con SSL si aplica)
+   - `SQL_DEFAULT_SCHEMA=coffee_chain`
+   - `SQL_SANDBOX_SCHEMA=sql_playground`
+   - `SQL_MAX_ROWS=200`
+   - `SQL_STATEMENT_TIMEOUT_MS=8000`
+3. Build Command: `prisma generate && prisma migrate deploy && next build` (también en `vercel.json`).
+4. Tras el primer deploy, ejecuta el seed una vez (localmente contra la DB remota):
+
+```bash
+DATABASE_URL="postgresql://..." npm run db:seed
+```
+
+Eso carga `coffee_chain` (clientes, tiendas, menú, pedidos, etc.) y el sandbox `sql_playground`.
+
+## GitHub
+
+Publica el repo desde Cursor (Create repo) o:
+
+```bash
+gh auth login
+gh repo create sql-coffee-playground --public --source=. --remote=github --push
+```

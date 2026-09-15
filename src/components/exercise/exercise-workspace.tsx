@@ -217,7 +217,7 @@ export function ExerciseWorkspace({ exercise }: { exercise: Exercise }) {
 
   return (
     <div className="grid gap-4 xl:grid-cols-[320px_minmax(0,1fr)_minmax(280px,360px)]">
-      <Card className="h-fit border-[color:var(--cream)] bg-white shadow-sm">
+      <Card className="h-fit order-2 border-[color:var(--cream)] bg-white shadow-sm xl:order-1">
         <CardHeader>
           <div className="flex flex-wrap items-center gap-2">
             <Badge variant="secondary">{exercise.difficulty}</Badge>
@@ -304,7 +304,7 @@ export function ExerciseWorkspace({ exercise }: { exercise: Exercise }) {
         </CardContent>
       </Card>
 
-      <div className="space-y-4">
+      <div className="order-1 space-y-4 xl:order-2">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <Badge className="bg-[color:var(--coffee-mid)] text-white hover:bg-[color:var(--coffee-mid)]">
             {envLabel}
@@ -393,7 +393,7 @@ export function ExerciseWorkspace({ exercise }: { exercise: Exercise }) {
         ) : null}
       </div>
 
-      <Card className="h-fit border-[color:var(--cream)] bg-white shadow-sm">
+      <Card className="order-3 h-fit border-[color:var(--cream)] bg-white shadow-sm xl:order-3">
         <CardHeader>
           <CardTitle>Validación y solución</CardTitle>
           <CardDescription>

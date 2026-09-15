@@ -93,7 +93,7 @@ export function AppSidebar() {
         </Link>
       </div>
       <nav
-        className="fixed inset-x-0 bottom-0 z-50 border-t border-[color:var(--cream)] bg-white pb-[env(safe-area-inset-bottom)] lg:hidden"
+        className="fixed inset-x-0 bottom-0 z-[100] border-t border-[color:var(--cream)] bg-white pb-[env(safe-area-inset-bottom)] lg:hidden"
         aria-label="Navegación móvil"
       >
         <NavLinks compact />

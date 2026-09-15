@@ -8,43 +8,49 @@ import {
   Compass,
   FlaskConical,
   LayoutDashboard,
-  Menu,
-  X,
 } from "lucide-react";
-import { useCallback, useState } from "react";
 import { cn } from "@/lib/utils";
 
 const links = [
-  { href: "/", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/learn", label: "Ruta de aprendizaje", icon: BookOpenText },
-  { href: "/explore", label: "Explorar datos", icon: Compass },
-  { href: "/lab", label: "Laboratorio libre", icon: FlaskConical },
-  { href: "/lessons", label: "Mini lecciones", icon: Coffee },
+  { href: "/", label: "Dashboard", shortLabel: "Inicio", icon: LayoutDashboard },
+  { href: "/learn", label: "Ruta de aprendizaje", shortLabel: "Ruta", icon: BookOpenText },
+  { href: "/explore", label: "Explorar datos", shortLabel: "Datos", icon: Compass },
+  { href: "/lab", label: "Laboratorio libre", shortLabel: "Lab", icon: FlaskConical },
+  { href: "/lessons", label: "Mini lecciones", shortLabel: "Lecciones", icon: Coffee },
 ];
 
-function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
+function isActive(pathname: string, href: string) {
+  return pathname === href || (href !== "/" && pathname.startsWith(href));
+}
+
+function NavLinks({ compact = false }: { compact?: boolean }) {
   const pathname = usePathname();
 
   return (
-    <nav className="flex flex-col gap-1 p-3" aria-label="Principal">
+    <nav className={cn("flex", compact ? "w-full" : "flex-col gap-1 p-3")} aria-label="Principal">
       {links.map((link) => {
-        const active = pathname === link.href || (link.href !== "/" && pathname.startsWith(link.href));
+        const active = isActive(pathname, link.href);
         const Icon = link.icon;
         return (
           <Link
             key={link.href}
             href={link.href}
-            onClick={onNavigate}
             aria-current={active ? "page" : undefined}
             className={cn(
-              "flex min-h-11 items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors lg:min-h-0",
+              compact
+                ? "flex min-h-14 min-w-0 flex-1 flex-col items-center justify-center gap-1 px-1 text-[11px] font-medium"
+                : "flex min-h-11 items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors lg:min-h-0",
               active
-                ? "bg-[color:var(--coffee-mid)] text-white shadow-sm"
-                : "text-[color:var(--coffee-dark)]/80 hover:bg-[color:var(--cream)]"
+                ? compact
+                  ? "text-[color:var(--terracotta)]"
+                  : "bg-[color:var(--coffee-mid)] text-white shadow-sm"
+                : compact
+                  ? "text-[color:var(--muted-text)]"
+                  : "text-[color:var(--coffee-dark)]/80 hover:bg-[color:var(--cream)]"
             )}
           >
             <Icon className="size-4 shrink-0" aria-hidden />
-            {link.label}
+            <span className={cn(compact && "truncate")}>{compact ? link.shortLabel : link.label}</span>
           </Link>
         );
       })}
@@ -78,43 +84,20 @@ function SidebarNote() {
 }
 
 export function AppSidebar() {
-  const pathname = usePathname();
-  const [open, setOpen] = useState(false);
-  const [menuPathname, setMenuPathname] = useState(pathname);
-
-  if (pathname !== menuPathname) {
-    setMenuPathname(pathname);
-    if (open) setOpen(false);
-  }
-
-  const closeMenu = useCallback(() => setOpen(false), []);
-
   return (
     <>
-      <div className="z-30 flex shrink-0 items-center justify-between border-b border-[color:var(--cream)] bg-white px-3 py-2.5 lg:hidden pt-[max(0.625rem,env(safe-area-inset-top))]">
+      <div className="flex shrink-0 items-center gap-2 border-b border-[color:var(--cream)] bg-white px-3 py-2.5 lg:hidden pt-[max(0.625rem,env(safe-area-inset-top))]">
         <Link href="/" className="flex min-h-11 items-center gap-2 font-semibold text-[color:var(--coffee-dark)]">
           <Coffee className="size-5 text-[color:var(--terracotta)]" />
           SQL Coffee
         </Link>
-        <button
-          type="button"
-          className="inline-flex size-11 items-center justify-center rounded-lg border border-[color:var(--cream)] bg-white text-[color:var(--coffee-dark)]"
-          aria-label={open ? "Cerrar menú de navegación" : "Abrir menú de navegación"}
-          aria-expanded={open}
-          aria-controls="mobile-navigation"
-          onClick={() => setOpen((value) => !value)}
-        >
-          {open ? <X className="size-4" /> : <Menu className="size-4" />}
-        </button>
       </div>
-      {open ? (
-        <div
-          id="mobile-navigation"
-          className="shrink-0 border-b border-[color:var(--cream)] bg-white lg:hidden"
-        >
-          <NavLinks onNavigate={closeMenu} />
-        </div>
-      ) : null}
+      <nav
+        className="fixed inset-x-0 bottom-0 z-50 border-t border-[color:var(--cream)] bg-white pb-[env(safe-area-inset-bottom)] lg:hidden"
+        aria-label="Navegación móvil"
+      >
+        <NavLinks compact />
+      </nav>
       <aside className="hidden h-full w-64 shrink-0 overflow-y-auto border-r border-[color:var(--cream)] bg-white/90 lg:flex lg:flex-col">
         <Brand />
         <NavLinks />

@@ -41,7 +41,7 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="es" suppressHydrationWarning className={`${display.variable} ${sans.variable} ${mono.variable} h-full`}>
-      <body className="h-full overflow-hidden font-sans antialiased">
+      <body className="min-h-full font-sans antialiased">
         <ThemeProvider>
           <ProgressProvider>
             <TooltipProvider>

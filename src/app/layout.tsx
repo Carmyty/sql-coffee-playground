@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
 import { Fraunces, Source_Sans_3, JetBrains_Mono } from "next/font/google";
 import { ThemeProvider } from "@/components/providers/theme-provider";
@@ -28,10 +28,20 @@ export const metadata: Metadata = {
     "Aprende SQL de forma interactiva con la base de datos de una cadena de cafeterías, tutoría progresiva y sandbox seguro.",
 };
 
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#f7f3ee" },
+    { media: "(prefers-color-scheme: dark)", color: "#1c1612" },
+  ],
+};
+
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="es" suppressHydrationWarning className={`${display.variable} ${sans.variable} ${mono.variable} h-full`}>
-      <body className="min-h-full font-sans antialiased">
+      <body className="h-full overflow-hidden font-sans antialiased">
         <ThemeProvider>
           <ProgressProvider>
             <TooltipProvider>

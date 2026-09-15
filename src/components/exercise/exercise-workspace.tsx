@@ -216,14 +216,14 @@ export function ExerciseWorkspace({ exercise }: { exercise: Exercise }) {
   }
 
   return (
-    <div className="grid gap-4 xl:grid-cols-[320px_minmax(0,1fr)_minmax(280px,360px)]">
+    <div className="grid min-w-0 gap-4 xl:grid-cols-[minmax(0,320px)_minmax(0,1fr)_minmax(0,360px)]">
       <Card className="h-fit order-2 border-[color:var(--cream)] bg-white shadow-sm xl:order-1">
         <CardHeader>
           <div className="flex flex-wrap items-center gap-2">
             <Badge variant="secondary">{exercise.difficulty}</Badge>
             <Badge variant="outline">{exercise.estimatedMinutes} min</Badge>
           </div>
-          <CardTitle className="font-[family-name:var(--font-display)] text-2xl text-[color:var(--coffee-dark)]">
+          <CardTitle className="font-[family-name:var(--font-display)] text-xl text-[color:var(--coffee-dark)] sm:text-2xl">
             {exercise.title}
           </CardTitle>
           <CardDescription>{exercise.objective}</CardDescription>
@@ -287,7 +287,7 @@ export function ExerciseWorkspace({ exercise }: { exercise: Exercise }) {
             {previous ? (
               <Link
                 href={`/learn/${previous.moduleId}/${previous.id}`}
-                className="inline-flex h-8 flex-1 items-center justify-center rounded-lg text-sm hover:bg-muted"
+                className="inline-flex h-11 flex-1 items-center justify-center rounded-lg text-sm hover:bg-muted md:h-8"
               >
                 Anterior
               </Link>
@@ -295,7 +295,7 @@ export function ExerciseWorkspace({ exercise }: { exercise: Exercise }) {
             {next ? (
               <Link
                 href={`/learn/${next.moduleId}/${next.id}`}
-                className="inline-flex h-8 flex-1 items-center justify-center rounded-lg text-sm hover:bg-muted"
+                className="inline-flex h-11 flex-1 items-center justify-center rounded-lg text-sm hover:bg-muted md:h-8"
               >
                 Siguiente
               </Link>
@@ -304,12 +304,12 @@ export function ExerciseWorkspace({ exercise }: { exercise: Exercise }) {
         </CardContent>
       </Card>
 
-      <div className="order-1 space-y-4 xl:order-2">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <Badge className="bg-[color:var(--coffee-mid)] text-white hover:bg-[color:var(--coffee-mid)]">
+      <div className="order-1 min-w-0 space-y-4 xl:order-2">
+        <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
+          <Badge className="w-fit bg-[color:var(--coffee-mid)] text-white hover:bg-[color:var(--coffee-mid)]">
             {envLabel}
           </Badge>
-          <div className="flex flex-wrap gap-2">
+          <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
             <Button variant="outline" size="sm" onClick={formatSql}>
               Formatear
             </Button>
@@ -319,13 +319,13 @@ export function ExerciseWorkspace({ exercise }: { exercise: Exercise }) {
             </Button>
             <Link
               href="/explore"
-              className="inline-flex h-7 items-center gap-1.5 rounded-lg border px-2.5 text-sm"
+              className="inline-flex h-9 items-center justify-center gap-1.5 rounded-lg border px-2.5 text-sm md:h-7"
             >
               <Table2 className="size-4" />
               Ver esquema
             </Link>
             {exercise.environment === "sandbox" ? (
-              <Button variant="outline" size="sm" onClick={resetSandbox} disabled={busy}>
+              <Button variant="outline" size="sm" className="col-span-2 sm:col-span-1" onClick={resetSandbox} disabled={busy}>
                 <RotateCcw className="size-4" />
                 Reiniciar sandbox
               </Button>
@@ -336,18 +336,18 @@ export function ExerciseWorkspace({ exercise }: { exercise: Exercise }) {
         <AccuracyBar accuracy={accuracy} />
         <SqlEditor value={sql} onChange={setSql} schema={schemaMap} height="320px" />
 
-        <div className="flex flex-wrap gap-2">
-          <Button onClick={() => runQuery(false)} disabled={busy}>
+        <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+          <Button className="max-sm:min-h-11 max-sm:w-full" onClick={() => runQuery(false)} disabled={busy}>
             <Play className="size-4" />
             Ejecutar consulta
           </Button>
           {pendingConfirm ? (
-            <Button variant="destructive" onClick={() => runQuery(true)} disabled={busy}>
+            <Button variant="destructive" className="max-sm:w-full" onClick={() => runQuery(true)} disabled={busy}>
               <AlertTriangle className="size-4" />
               Confirmar modificación
             </Button>
           ) : null}
-          <Button variant="secondary" onClick={explainQuery} disabled={!sql.trim()}>
+          <Button variant="secondary" className="max-sm:w-full" onClick={explainQuery} disabled={!sql.trim()}>
             <Sparkles className="size-4" />
             Explícame esta consulta
           </Button>
@@ -422,7 +422,7 @@ export function ExerciseWorkspace({ exercise }: { exercise: Exercise }) {
           ) : (
             <div className="space-y-3">
               <p className="font-medium">Solución de referencia (una de varias posibles)</p>
-              <pre className="overflow-auto rounded-lg bg-[color:var(--coffee-dark)] p-3 text-xs text-[color:var(--cream)]">
+              <pre className="overflow-x-auto whitespace-pre-wrap break-words rounded-lg bg-[color:var(--coffee-dark)] p-3 text-xs text-[color:var(--cream)]">
                 {(reference?.sql || exercise.referenceSql).trim()}
               </pre>
               <ul className="space-y-2">

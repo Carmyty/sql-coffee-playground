@@ -133,10 +133,10 @@ export default function LabPage() {
 
   return (
     <AppShell title="Laboratorio libre">
-      <div className="animate-fade-up grid gap-4 xl:grid-cols-[minmax(0,1fr)_300px]">
+      <div className="animate-fade-up grid min-w-0 gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(0,300px)]">
         <div className="space-y-4">
           <div className="flex flex-wrap items-center gap-2">
-            <Badge className="bg-[color:var(--coffee-mid)] text-white hover:bg-[color:var(--coffee-mid)]">
+            <Badge className="max-w-full whitespace-normal bg-[color:var(--coffee-mid)] text-white hover:bg-[color:var(--coffee-mid)]">
               {mode === "read" ? "Lectura: coffee_chain" : "Práctica segura: sql_playground"}
             </Badge>
             <Button variant={mode === "read" ? "default" : "outline"} size="sm" onClick={() => setMode("read")}>
@@ -154,18 +154,19 @@ export default function LabPage() {
           <AccuracyBar accuracy={accuracy} />
           <SqlEditor value={sql} onChange={setSql} schema={schemaMap} height="320px" />
 
-          <div className="flex flex-wrap gap-2">
-            <Button onClick={() => runQuery(false)} disabled={busy}>
+          <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+            <Button className="max-sm:w-full" onClick={() => runQuery(false)} disabled={busy}>
               <Play className="size-4" />
               Ejecutar
             </Button>
             {pendingConfirm ? (
-              <Button variant="destructive" onClick={() => runQuery(true)} disabled={busy}>
+              <Button variant="destructive" className="max-sm:w-full" onClick={() => runQuery(true)} disabled={busy}>
                 Confirmar modificación
               </Button>
             ) : null}
             <Button
               variant="outline"
+              className="max-sm:w-full"
               onClick={() => {
                 try {
                   setSql(format(sql, { language: "postgresql" }));
@@ -176,15 +177,15 @@ export default function LabPage() {
             >
               Formatear
             </Button>
-            <Button variant="outline" onClick={() => setSql("")}>
+            <Button variant="outline" className="max-sm:w-full" onClick={() => setSql("")}>
               <Eraser className="size-4" />
               Limpiar
             </Button>
-            <Button variant="secondary" onClick={explain}>
+            <Button variant="secondary" className="max-sm:w-full" onClick={explain}>
               <Sparkles className="size-4" />
               Explícame esta consulta
             </Button>
-            <Button variant="secondary" onClick={improve}>
+            <Button variant="secondary" className="max-sm:w-full" onClick={improve}>
               Dame una pista para mejorarla
             </Button>
           </div>
@@ -257,7 +258,7 @@ export default function LabPage() {
                       />
                     </button>
                   </div>
-                  <pre className="overflow-auto whitespace-pre-wrap">{item.sql}</pre>
+                  <pre className="overflow-x-auto whitespace-pre-wrap break-words">{item.sql}</pre>
                 </div>
               ))
             )}

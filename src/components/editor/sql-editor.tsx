@@ -1,7 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useEffect, useState } from "react";
+import { useState, useSyncExternalStore } from "react";
 
 type SqlEditorProps = {
   value: string;
@@ -15,11 +15,31 @@ type SqlEditorProps = {
 const CodeMirrorEditor = dynamic(() => import("./codemirror-sql"), {
   ssr: false,
   loading: () => (
-    <div className="flex h-[320px] items-center justify-center rounded-xl border border-[color:var(--cream)] bg-white text-sm text-[color:var(--muted-text)]">
+    <div className="flex h-[min(40svh,20rem)] min-h-[200px] items-center justify-center rounded-xl border border-[color:var(--cream)] bg-white text-sm text-[color:var(--muted-text)] md:h-[320px]">
       Cargando editor SQL…
     </div>
   ),
 });
+
+function useIsClient() {
+  return useSyncExternalStore(
+    () => () => undefined,
+    () => true,
+    () => false
+  );
+}
+
+function useResponsiveEditorHeight(desktopHeight: string) {
+  return useSyncExternalStore(
+    (onStoreChange) => {
+      const media = window.matchMedia("(min-width: 768px)");
+      media.addEventListener("change", onStoreChange);
+      return () => media.removeEventListener("change", onStoreChange);
+    },
+    () => (window.matchMedia("(min-width: 768px)").matches ? desktopHeight : "220px"),
+    () => desktopHeight
+  );
+}
 
 export function SqlEditor({
   value,
@@ -31,11 +51,8 @@ export function SqlEditor({
 }: SqlEditorProps) {
   // Plain textarea by default so practice always works (CodeMirror can steal focus in some clients).
   const [useHighlight, setUseHighlight] = useState(false);
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
+  const mounted = useIsClient();
+  const editorHeight = useResponsiveEditorHeight(height);
 
   if (!useHighlight) {
     return (
@@ -47,7 +64,7 @@ export function SqlEditor({
           {mounted ? (
             <button
               type="button"
-              className="text-xs text-[color:var(--muted-text)] underline"
+              className="min-h-11 text-xs text-[color:var(--muted-text)] underline md:min-h-0"
               onClick={() => setUseHighlight(true)}
             >
               Usar resaltado
@@ -61,8 +78,8 @@ export function SqlEditor({
           placeholder={placeholder}
           aria-label={ariaLabel}
           spellCheck={false}
-          className="min-h-[280px] w-full resize-y rounded-xl border-2 border-[color:var(--coffee-mid)] bg-white p-4 font-mono text-sm leading-6 text-[color:var(--coffee-dark)] shadow-sm outline-none ring-[color:var(--terracotta)] placeholder:text-[color:var(--muted-text)] focus:ring-2"
-          style={{ height }}
+          className="min-h-[200px] w-full resize-y rounded-xl border-2 border-[color:var(--coffee-mid)] bg-white p-3 font-mono text-base leading-6 text-[color:var(--coffee-dark)] shadow-sm outline-none ring-[color:var(--terracotta)] placeholder:text-[color:var(--muted-text)] focus:ring-2 md:min-h-[280px] md:p-4 md:text-sm"
+          style={{ height: editorHeight }}
         />
       </div>
     );
@@ -74,7 +91,7 @@ export function SqlEditor({
         <label className="text-sm font-medium text-[color:var(--coffee-dark)]">Tu consulta SQL</label>
         <button
           type="button"
-          className="text-xs text-[color:var(--muted-text)] underline"
+          className="min-h-11 text-xs text-[color:var(--muted-text)] underline md:min-h-0"
           onClick={() => setUseHighlight(false)}
         >
           Editor simple
@@ -84,7 +101,7 @@ export function SqlEditor({
         value={value}
         onChange={onChange}
         schema={schema}
-        height={height}
+        height={editorHeight}
         ariaLabel={ariaLabel}
         placeholder={placeholder}
       />

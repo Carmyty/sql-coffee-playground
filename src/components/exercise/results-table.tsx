@@ -35,7 +35,7 @@ export function ResultsTable({ columns, rows, pageSize = 10 }: ResultsTableProps
 
   return (
     <div className="space-y-3">
-      <div className="overflow-auto rounded-xl border border-[color:var(--cream)] bg-white">
+      <div className="max-w-full overflow-x-auto overscroll-x-contain rounded-xl border border-[color:var(--cream)] bg-white [-webkit-overflow-scrolling:touch]">
         <Table>
           <TableHeader>
             <TableRow>
@@ -67,7 +67,7 @@ export function ResultsTable({ columns, rows, pageSize = 10 }: ResultsTableProps
           </TableBody>
         </Table>
       </div>
-      <div className="flex items-center justify-between gap-2 text-xs text-[color:var(--muted-text)]">
+      <div className="flex flex-col gap-2 text-xs text-[color:var(--muted-text)] sm:flex-row sm:items-center sm:justify-between">
         <span>
           {rows.length} fila{rows.length === 1 ? "" : "s"} · página {page + 1} / {totalPages}
         </span>

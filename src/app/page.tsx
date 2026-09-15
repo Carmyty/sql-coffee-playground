@@ -71,11 +71,11 @@ export default function DashboardPage() {
                 <Badge>{nextExercise.difficulty}</Badge>
                 <Badge variant="outline">{nextExercise.estimatedMinutes} min</Badge>
               </div>
-              <h2 className="font-[family-name:var(--font-display)] text-2xl text-[color:var(--coffee-dark)]">
+              <h2 className="font-[family-name:var(--font-display)] text-xl text-[color:var(--coffee-dark)] sm:text-2xl">
                 {nextExercise.title}
               </h2>
               <p className="text-sm text-[color:var(--muted-text)]">{nextExercise.objective}</p>
-              <Button render={<Link href={`/learn/${nextExercise.moduleId}/${nextExercise.id}`} />}>
+              <Button className="max-sm:w-full" render={<Link href={`/learn/${nextExercise.moduleId}/${nextExercise.id}`} />}>
                 Abrir ejercicio
               </Button>
             </CardContent>
@@ -87,7 +87,7 @@ export default function DashboardPage() {
             </CardHeader>
             <CardContent className="space-y-3 text-sm">
               <p>{concept.summary}</p>
-              <Button variant="outline" render={<Link href={`/lessons/${concept.id}`} />}>
+              <Button variant="outline" className="max-sm:w-full" render={<Link href={`/lessons/${concept.id}`} />}>
                 Leer mini lección
               </Button>
             </CardContent>
@@ -113,9 +113,9 @@ export default function DashboardPage() {
                     <Link
                       key={id}
                       href={`/learn/${exercise.moduleId}/${exercise.id}`}
-                      className="flex items-center justify-between rounded-xl border border-[color:var(--cream)] px-3 py-2 text-sm hover:bg-[color:var(--cream)]/50"
+                      className="flex min-h-11 items-center justify-between gap-2 rounded-xl border border-[color:var(--cream)] px-3 py-2 text-sm hover:bg-[color:var(--cream)]/50"
                     >
-                      <span>{exercise.title}</span>
+                      <span className="min-w-0 flex-1 truncate">{exercise.title}</span>
                       <Badge variant="outline">{progress.status}</Badge>
                     </Link>
                   );
@@ -128,14 +128,14 @@ export default function DashboardPage() {
               <CardTitle>Ruta rápida</CardTitle>
               <CardDescription>Explora módulos, datos y el laboratorio libre.</CardDescription>
             </CardHeader>
-            <CardContent className="flex flex-wrap gap-2">
-              <Button variant="outline" render={<Link href="/learn" />}>
+            <CardContent className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+              <Button variant="outline" className="max-sm:w-full" render={<Link href="/learn" />}>
                 Ruta de aprendizaje
               </Button>
-              <Button variant="outline" render={<Link href="/explore" />}>
+              <Button variant="outline" className="max-sm:w-full" render={<Link href="/explore" />}>
                 Explorar datos
               </Button>
-              <Button variant="outline" render={<Link href="/lab" />}>
+              <Button variant="outline" className="max-sm:w-full" render={<Link href="/lab" />}>
                 Laboratorio
               </Button>
             </CardContent>

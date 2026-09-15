@@ -1,0 +1,238 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  schemas  = ["coffee_chain", "sql_playground"]
+}
+
+model Customer {
+  customerId Int      @id @default(autoincrement()) @map("customer_id")
+  firstName  String   @map("first_name") @db.VarChar(80)
+  lastName   String   @map("last_name") @db.VarChar(80)
+  email      String   @unique @db.VarChar(160)
+  phone      String?  @db.VarChar(40)
+  city       String?  @db.VarChar(80)
+  createdAt  DateTime @default(now()) @map("created_at")
+  orders     Order[]
+
+  @@map("customers")
+  @@schema("coffee_chain")
+}
+
+model Store {
+  storeId         Int              @id @default(autoincrement()) @map("store_id")
+  name            String           @db.VarChar(120)
+  city            String           @db.VarChar(80)
+  address         String           @db.VarChar(200)
+  openedAt        DateTime         @map("opened_at") @db.Date
+  employees       Employee[]
+  orders          Order[]
+  inventory       Inventory[]
+  purchaseOrders  PurchaseOrder[]
+
+  @@map("stores")
+  @@schema("coffee_chain")
+}
+
+model EmployeeRole {
+  roleId    Int        @id @default(autoincrement()) @map("role_id")
+  roleName  String     @unique @map("role_name") @db.VarChar(80)
+  employees Employee[]
+
+  @@map("employee_roles")
+  @@schema("coffee_chain")
+}
+
+model Employee {
+  employeeId Int          @id @default(autoincrement()) @map("employee_id")
+  firstName  String       @map("first_name") @db.VarChar(80)
+  lastName   String       @map("last_name") @db.VarChar(80)
+  email      String       @unique @db.VarChar(160)
+  storeId    Int          @map("store_id")
+  roleId     Int          @map("role_id")
+  hiredAt    DateTime     @map("hired_at") @db.Date
+  store      Store        @relation(fields: [storeId], references: [storeId])
+  role       EmployeeRole @relation(fields: [roleId], references: [roleId])
+  orders     Order[]
+
+  @@map("employees")
+  @@schema("coffee_chain")
+}
+
+model MenuCategory {
+  categoryId  Int        @id @default(autoincrement()) @map("category_id")
+  name        String     @unique @db.VarChar(80)
+  description String?
+  items       MenuItem[]
+
+  @@map("menu_categories")
+  @@schema("coffee_chain")
+}
+
+model MenuItem {
+  itemId          Int                 @id @default(autoincrement()) @map("item_id")
+  name            String              @db.VarChar(120)
+  categoryId      Int                 @map("category_id")
+  price           Decimal             @db.Decimal(8, 2)
+  isAvailable     Boolean             @default(true) @map("is_available")
+  description     String?
+  category        MenuCategory        @relation(fields: [categoryId], references: [categoryId])
+  customizations  ItemCustomization[]
+  orderItems      OrderItem[]
+  inventory       Inventory[]
+
+  @@map("menu_items")
+  @@schema("coffee_chain")
+}
+
+model CustomizationOption {
+  optionId       Int                 @id @default(autoincrement()) @map("option_id")
+  name           String              @db.VarChar(80)
+  extraCost      Decimal             @default(0) @map("extra_cost") @db.Decimal(6, 2)
+  itemLinks      ItemCustomization[]
+
+  @@map("customization_options")
+  @@schema("coffee_chain")
+}
+
+model ItemCustomization {
+  itemId   Int                 @map("item_id")
+  optionId Int                 @map("option_id")
+  item     MenuItem            @relation(fields: [itemId], references: [itemId])
+  option   CustomizationOption @relation(fields: [optionId], references: [optionId])
+
+  @@id([itemId, optionId])
+  @@map("item_customizations")
+  @@schema("coffee_chain")
+}
+
+model Order {
+  orderId     Int         @id @default(autoincrement()) @map("order_id")
+  customerId  Int?        @map("customer_id")
+  storeId     Int         @map("store_id")
+  employeeId  Int?        @map("employee_id")
+  orderDate   DateTime    @default(now()) @map("order_date")
+  status      String      @db.VarChar(30)
+  customer    Customer?   @relation(fields: [customerId], references: [customerId])
+  store       Store       @relation(fields: [storeId], references: [storeId])
+  employee    Employee?   @relation(fields: [employeeId], references: [employeeId])
+  items       OrderItem[]
+  payments    Payment[]
+
+  @@map("orders")
+  @@schema("coffee_chain")
+}
+
+model OrderItem {
+  orderItemId Int      @id @default(autoincrement()) @map("order_item_id")
+  orderId     Int      @map("order_id")
+  itemId      Int      @map("item_id")
+  quantity    Int
+  unitPrice   Decimal  @map("unit_price") @db.Decimal(8, 2)
+  order       Order    @relation(fields: [orderId], references: [orderId])
+  item        MenuItem @relation(fields: [itemId], references: [itemId])
+
+  @@map("order_items")
+  @@schema("coffee_chain")
+}
+
+model Payment {
+  paymentId     Int       @id @default(autoincrement()) @map("payment_id")
+  orderId       Int?      @map("order_id")
+  amount        Decimal   @db.Decimal(10, 2)
+  paymentMethod String    @map("payment_method") @db.VarChar(40)
+  paidAt        DateTime? @map("paid_at")
+  order         Order?    @relation(fields: [orderId], references: [orderId])
+
+  @@map("payments")
+  @@schema("coffee_chain")
+}
+
+model Inventory {
+  inventoryId    Int      @id @default(autoincrement()) @map("inventory_id")
+  storeId        Int      @map("store_id")
+  itemId         Int      @map("item_id")
+  quantityOnHand Int      @map("quantity_on_hand")
+  store          Store    @relation(fields: [storeId], references: [storeId])
+  item           MenuItem @relation(fields: [itemId], references: [itemId])
+
+  @@unique([storeId, itemId])
+  @@map("inventory")
+  @@schema("coffee_chain")
+}
+
+model Supplier {
+  supplierId     Int             @id @default(autoincrement()) @map("supplier_id")
+  name           String          @db.VarChar(120)
+  contactEmail   String?         @map("contact_email") @db.VarChar(160)
+  city           String?         @db.VarChar(80)
+  supplies       Supply[]
+  purchaseOrders PurchaseOrder[]
+
+  @@map("suppliers")
+  @@schema("coffee_chain")
+}
+
+model Supply {
+  supplyId   Int                  @id @default(autoincrement()) @map("supply_id")
+  name       String               @db.VarChar(120)
+  unit       String               @db.VarChar(40)
+  supplierId Int?                 @map("supplier_id")
+  supplier   Supplier?            @relation(fields: [supplierId], references: [supplierId])
+  poItems    PurchaseOrderItem[]
+
+  @@map("supplies")
+  @@schema("coffee_chain")
+}
+
+model PurchaseOrder {
+  poId       Int                  @id @default(autoincrement()) @map("po_id")
+  supplierId Int                  @map("supplier_id")
+  storeId    Int                  @map("store_id")
+  orderedAt  DateTime             @map("ordered_at") @db.Date
+  status     String               @db.VarChar(30)
+  supplier   Supplier             @relation(fields: [supplierId], references: [supplierId])
+  store      Store                @relation(fields: [storeId], references: [storeId])
+  items      PurchaseOrderItem[]
+
+  @@map("purchase_orders")
+  @@schema("coffee_chain")
+}
+
+model PurchaseOrderItem {
+  poItemId Int           @id @default(autoincrement()) @map("po_item_id")
+  poId     Int           @map("po_id")
+  supplyId Int           @map("supply_id")
+  quantity Decimal       @db.Decimal(10, 2)
+  unitCost Decimal       @map("unit_cost") @db.Decimal(10, 2)
+  po       PurchaseOrder @relation(fields: [poId], references: [poId])
+  supply   Supply        @relation(fields: [supplyId], references: [supplyId])
+
+  @@map("purchase_order_items")
+  @@schema("coffee_chain")
+}
+
+model PracticeCustomer {
+  practiceId Int      @id @default(autoincrement()) @map("practice_id")
+  firstName  String   @map("first_name") @db.VarChar(80)
+  lastName   String   @map("last_name") @db.VarChar(80)
+  email      String   @unique @db.VarChar(160)
+  city       String?  @db.VarChar(80)
+  notes      String?  @db.VarChar(200)
+
+  @@map("practice_customers")
+  @@schema("sql_playground")
+}
+
+model PracticeMenuItem {
+  practiceId Int     @id @default(autoincrement()) @map("practice_id")
+  name       String  @db.VarChar(120)
+  price      Decimal @db.Decimal(8, 2)
+  category   String  @db.VarChar(80)
+
+  @@map("practice_menu_items")
+  @@schema("sql_playground")
+}

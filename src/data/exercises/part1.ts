@@ -32,7 +32,13 @@ export const EXERCISES: Exercise[] = [
     ],
     starterSql: "-- Explora la tabla de clientes\n",
     environment: "read",
-    validation: { matchMode: "set", ignoreRowOrder: true, minRows: 10, requiredKeywords: ["select", "from"] },
+    validation: {
+      matchMode: "set",
+      ignoreRowOrder: true,
+      minRows: 10,
+      requiredKeywords: ["select", "from"],
+      compareSql: "SELECT * FROM customers",
+    },
     unlockAfterAttempts: 2,
   },
   {

@@ -99,7 +99,10 @@ export async function validateExerciseAttempt(input: {
     mutationOk,
   });
 
-  const nearMissUnlock = validation.nearMiss && validation.status === "partial";
+  const nearMissUnlock =
+    validation.nearMiss &&
+    validation.status === "partial" &&
+    validation.missingKeywords.length === 0;
 
   return {
     ok: true as const,

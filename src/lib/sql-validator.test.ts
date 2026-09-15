@@ -67,6 +67,35 @@ describe("sql-validator", () => {
     expect(result.status).toBe("correct");
   });
 
+  it("does not treat a random SELECT 1 as a near miss for minRows exercises", () => {
+    const result = validateAttempt({
+      userSql: "SELECT 1",
+      userRows: [{ "?column?": 1 }],
+      rules: {
+        requiredKeywords: ["select", "from"],
+        minRows: 10,
+        matchMode: "set",
+      },
+    });
+    expect(result.status).toBe("incorrect");
+    expect(result.nearMiss).toBe(false);
+    expect(result.missingKeywords).toContain("from");
+  });
+
+  it("marks few rows as near miss when keywords are already present", () => {
+    const result = validateAttempt({
+      userSql: "SELECT * FROM customers WHERE city = 'Nowhere'",
+      userRows: [],
+      rules: {
+        requiredKeywords: ["select", "from", "where"],
+        minRows: 5,
+        matchMode: "set",
+      },
+    });
+    expect(result.status).toBe("partial");
+    expect(result.nearMiss).toBe(true);
+  });
+
   it("finds multi-word keywords", () => {
     expect(findKeywords("SELECT * FROM a GROUP BY b HAVING COUNT(*) > 1", ["group by", "having"])).toEqual([
       "group by",

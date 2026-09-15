@@ -223,11 +223,21 @@ export function validateAttempt(input: ValidationInput): ValidationOutput {
   }
 
   if (rules.minRows !== undefined && input.userRows.length < rules.minRows) {
+    if (missingKeywords.length > 0) {
+      return {
+        status: "incorrect",
+        message: "Todavía falta el concepto principal de este ejercicio.",
+        explanation: `Incluye ${missingKeywords.join(", ")} de forma consciente. Además, el resultado tiene pocas filas para lo que pide el objetivo.`,
+        nearMiss: false,
+        missingKeywords,
+        missingColumns,
+      };
+    }
     return {
       status: "partial",
       message: "Vas cerca: tu consulta devuelve pocas filas.",
       explanation: "Revisa el filtro WHERE, un JOIN demasiado restrictivo o un HAVING que deja fuera grupos válidos.",
-      nearMiss: missingKeywords.length <= 1,
+      nearMiss: true,
       missingKeywords,
       missingColumns,
     };

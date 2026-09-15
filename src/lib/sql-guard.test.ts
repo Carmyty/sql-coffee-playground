@@ -78,6 +78,15 @@ describe("sql-guard", () => {
     expect(result.issues.some((issue) => issue.code === "write_protected_schema")).toBe(true);
   });
 
+  it("blocks writes against quoted protected schemas", () => {
+    const result = inspectSql(
+      'DELETE FROM "coffee_chain"."customers" WHERE customer_id = 1',
+      { mode: "sandbox", ...options }
+    );
+    expect(result.ok).toBe(false);
+    expect(result.issues.some((issue) => issue.code === "write_protected_schema")).toBe(true);
+  });
+
   it("blocks mutations in read mode", () => {
     const result = inspectSql(
       "INSERT INTO practice_customers (first_name, last_name, email) VALUES ('A','B','a@b.c')",
@@ -98,6 +107,14 @@ describe("sql-guard", () => {
 
   it("classifies WITH as select", () => {
     expect(classifyStatement("WITH x AS (SELECT 1) SELECT * FROM x")).toBe("select");
+  });
+
+  it("classifies data-modifying CTEs as mutations", () => {
+    expect(
+      classifyStatement(
+        "WITH removed AS (DELETE FROM practice_customers WHERE practice_id = 1 RETURNING *) SELECT * FROM removed"
+      )
+    ).toBe("delete");
   });
 
   it("detects WHERE at top level", () => {

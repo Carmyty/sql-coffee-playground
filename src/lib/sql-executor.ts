@@ -124,7 +124,7 @@ function resolveMode(
   return isMutation || kind !== "select" ? "sandbox" : "read";
 }
 
-async function estimateImpact(sql: string | undefined, schema: string): Promise<number | undefined> {
+async function estimateImpact(sql: string | undefined): Promise<number | undefined> {
   if (!sql) return undefined;
   try {
     const rows = await prisma.$queryRawUnsafe(sql) as Array<{ estimated_rows?: number }>;
@@ -184,7 +184,6 @@ export async function executeSql(request: ExecuteSqlRequest): Promise<ExecuteSql
           return `FROM ${sandboxSchema}.${table}`;
         }
       ),
-      schema
     );
     const impact =
       guard.kind === "update" || guard.kind === "delete"
@@ -202,52 +201,55 @@ export async function executeSql(request: ExecuteSqlRequest): Promise<ExecuteSql
 
   const started = Date.now();
   try {
-    await prisma.$executeRawUnsafe(`SET statement_timeout = ${timeoutMs}`);
-    await prisma.$executeRawUnsafe(`SET search_path TO ${quoteIdent(schema)}, public`);
+    return await prisma.$transaction(
+      async (tx) => {
+        // Transaction-local settings cannot leak through Prisma's connection pool.
+        if (mode === "read") {
+          await tx.$executeRawUnsafe("SET TRANSACTION READ ONLY");
+        }
+        await tx.$executeRawUnsafe(`SET LOCAL statement_timeout = ${timeoutMs}`);
+        await tx.$executeRawUnsafe(`SET LOCAL search_path TO ${quoteIdent(schema)}, public`);
 
-    if (mode === "read") {
-      await prisma.$executeRawUnsafe("SET default_transaction_read_only = on");
-    } else {
-      await prisma.$executeRawUnsafe("SET default_transaction_read_only = off");
-    }
+        if (guard.kind !== "select") {
+          const affected = await tx.$executeRawUnsafe(guard.sql);
+          return {
+            ...base,
+            ok: true,
+            rows: [],
+            columns: [],
+            rowCount: typeof affected === "number" ? affected : 0,
+            truncated: false,
+            executionMs: Date.now() - started,
+            commandTag: guard.kind.toUpperCase(),
+          };
+        }
 
-    if (guard.kind !== "select") {
-      const affected = await prisma.$executeRawUnsafe(guard.sql);
-      return {
-        ...base,
-        ok: true,
-        rows: [],
-        columns: [],
-        rowCount: typeof affected === "number" ? affected : 0,
-        truncated: false,
-        executionMs: Date.now() - started,
-        commandTag: guard.kind.toUpperCase(),
-      };
-    }
+        let sqlToRun = guard.sql;
+        if (!/\blimit\b/i.test(guard.sql)) {
+          sqlToRun = `${guard.sql.replace(/;+\s*$/, "")} LIMIT ${maxRows + 1}`;
+        }
 
-    let sqlToRun = guard.sql;
-    if (!/\blimit\b/i.test(guard.sql)) {
-      sqlToRun = `${guard.sql.replace(/;+\s*$/, "")} LIMIT ${maxRows + 1}`;
-    }
+        const raw = await tx.$queryRawUnsafe(sqlToRun);
+        const rows = rowsFromUnknown(raw);
+        const truncated = rows.length > maxRows;
+        const limited = truncated ? rows.slice(0, maxRows) : rows;
+        const columns = limited[0]
+          ? Object.keys(limited[0]).map((name) => ({ name }))
+          : [];
 
-    const raw = await prisma.$queryRawUnsafe(sqlToRun);
-    const rows = rowsFromUnknown(raw);
-    const truncated = rows.length > maxRows;
-    const limited = truncated ? rows.slice(0, maxRows) : rows;
-    const columns = limited[0]
-      ? Object.keys(limited[0]).map((name) => ({ name }))
-      : [];
-
-    return {
-      ...base,
-      ok: true,
-      rows: limited,
-      columns,
-      rowCount: limited.length,
-      truncated,
-      executionMs: Date.now() - started,
-      commandTag: guard.kind.toUpperCase(),
-    };
+        return {
+          ...base,
+          ok: true,
+          rows: limited,
+          columns,
+          rowCount: limited.length,
+          truncated,
+          executionMs: Date.now() - started,
+          commandTag: guard.kind.toUpperCase(),
+        };
+      },
+      { maxWait: timeoutMs, timeout: timeoutMs + 2_000 }
+    );
   } catch (error) {
     const message = error instanceof Error ? error.message : "Error desconocido al ejecutar SQL";
     return {
@@ -258,13 +260,5 @@ export async function executeSql(request: ExecuteSqlRequest): Promise<ExecuteSql
         beginnerHint: beginnerErrorHint(message),
       },
     };
-  } finally {
-    try {
-      await prisma.$executeRawUnsafe("SET default_transaction_read_only = off");
-      await prisma.$executeRawUnsafe("SET search_path TO public");
-      await prisma.$executeRawUnsafe("SET statement_timeout = 0");
-    } catch {
-      // ignore cleanup failures on a broken connection
-    }
   }
 }

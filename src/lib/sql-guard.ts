@@ -208,7 +208,16 @@ export function classifyStatement(sql: string): SqlStatementKind {
   const normalized = stripSqlComments(sql).trim().replace(/\s+/g, " ");
   const head = normalized.replace(/^\(+/, "").trim();
 
-  if (/^(select|with|values|table|explain|show)\b/i.test(head)) return "select";
+  if (/^with\b/i.test(head)) {
+    if (/\binsert\s+into\b/i.test(head)) return "insert";
+    if (/\bupdate\s+(?:"[^"]+"|[\w.]+)\s+set\b/i.test(head)) return "update";
+    if (/\bdelete\s+from\b/i.test(head)) return "delete";
+    return "select";
+  }
+  if (/^explain\s+(?:\([^)]*\)\s*)?analyze\b[\s\S]*\binsert\s+into\b/i.test(head)) return "insert";
+  if (/^explain\s+(?:\([^)]*\)\s*)?analyze\b[\s\S]*\bupdate\s+(?:"[^"]+"|[\w.]+)\s+set\b/i.test(head)) return "update";
+  if (/^explain\s+(?:\([^)]*\)\s*)?analyze\b[\s\S]*\bdelete\s+from\b/i.test(head)) return "delete";
+  if (/^(select|values|table|explain|show)\b/i.test(head)) return "select";
   if (/^insert\b/i.test(head)) return "insert";
   if (/^update\b/i.test(head)) return "update";
   if (/^delete\b/i.test(head)) return "delete";
@@ -242,8 +251,15 @@ export function hasWhereClause(sql: string): boolean {
 
 export function extractQualifiedIdentifiers(sql: string): string[] {
   const stripped = stripSqlComments(sql);
-  const matches = stripped.match(/\b[a-zA-Z_][\w]*\.[a-zA-Z_][\w]*/g) || [];
-  return matches.map((item) => item.toLowerCase());
+  const matches =
+    stripped.match(/(?:"(?:[^"]|"")*"|[a-zA-Z_]\w*)\s*\.\s*(?:"(?:[^"]|"")*"|[a-zA-Z_]\w*)/g) ||
+    [];
+  return matches.map((item) =>
+    item
+      .split(".")
+      .map((part) => part.trim().replace(/^"|"$/g, "").replaceAll('""', '"').toLowerCase())
+      .join(".")
+  );
 }
 
 function schemaFromQualified(identifier: string): string {

@@ -48,14 +48,14 @@ export default function LabPage() {
     () =>
       scoreLiveAccuracy(sql, {
         environment: mode,
-        suggestedTables: Object.keys(schemaMap).slice(0, 6),
-        concepts: ["select", "from", "where"],
+        suggestedTables: [],
+        concepts: [],
         validation: {
-          requiredKeywords: mode === "read" ? ["select", "from"] : ["select"],
+          requiredKeywords: mode === "read" ? ["select", "from"] : [],
           matchMode: "exists",
         },
       }),
-    [sql, mode, schemaMap]
+    [sql, mode]
   );
   useEffect(() => {
     fetch("/api/schema")

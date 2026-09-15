@@ -39,6 +39,19 @@ describe("scoreLiveAccuracy", () => {
     expect(missing.tips.join(" ")).toMatch(/WHERE/i);
   });
 
+  it("scores a lab-style query on structure only, without requiring every table", () => {
+    const lab = {
+      suggestedTables: [] as string[],
+      concepts: [] as string[],
+      environment: "read" as const,
+      validation: { requiredKeywords: ["select", "from"], matchMode: "exists" as const },
+    };
+    const good = scoreLiveAccuracy("SELECT name, city FROM stores LIMIT 10", lab);
+    const bad = scoreLiveAccuracy("SELECT 1", lab);
+    expect(good.tone).toBe("green");
+    expect(bad.score).toBeLessThan(good.score);
+  });
+
   it("accepts UNION without requiring a literal reference query", () => {
     const result = scoreLiveAccuracy(
       "SELECT first_name FROM customers UNION SELECT first_name FROM employees",

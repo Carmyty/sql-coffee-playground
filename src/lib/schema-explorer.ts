@@ -175,24 +175,50 @@ export async function previewTable(schema: string, table: string, limit = 50) {
   };
 }
 
-export function exampleQuestionsForTable(table: TableMeta): string[] {
+export function exampleQuestionsForTable(
+  table: TableMeta,
+  locale: "es" | "en" = "es"
+): string[] {
   const names = table.columns.map((column) => column.name.toLowerCase());
-  const questions = [`¿Cuántas filas hay en ${table.name}?`];
+  const questions =
+    locale === "en"
+      ? [`How many rows are in ${table.name}?`]
+      : [`¿Cuántas filas hay en ${table.name}?`];
   if (names.some((name) => name.includes("name") || name.includes("nombre"))) {
-    questions.push(`¿Cuáles son los nombres únicos en ${table.name}?`);
+    questions.push(
+      locale === "en"
+        ? `What are the unique names in ${table.name}?`
+        : `¿Cuáles son los nombres únicos en ${table.name}?`
+    );
   }
   if (names.some((name) => name.includes("price") || name.includes("precio") || name.includes("amount"))) {
-    questions.push(`¿Cuál es el valor mínimo, máximo y promedio de precio o monto en ${table.name}?`);
+    questions.push(
+      locale === "en"
+        ? `What is the min, max, and average price or amount in ${table.name}?`
+        : `¿Cuál es el valor mínimo, máximo y promedio de precio o monto en ${table.name}?`
+    );
   }
   if (names.some((name) => name.includes("date") || name.includes("created") || name.includes("at"))) {
-    questions.push(`¿Cuáles son los registros más recientes de ${table.name}?`);
+    questions.push(
+      locale === "en"
+        ? `What are the most recent records in ${table.name}?`
+        : `¿Cuáles son los registros más recientes de ${table.name}?`
+    );
   }
   if (table.foreignKeys.length > 0) {
     const related = table.foreignKeys[0];
-    questions.push(`¿Cómo se relaciona ${table.name} con ${related.table} mediante ${related.column}?`);
+    questions.push(
+      locale === "en"
+        ? `How does ${table.name} relate to ${related.table} through ${related.column}?`
+        : `¿Cómo se relaciona ${table.name} con ${related.table} mediante ${related.column}?`
+    );
   }
   if (names.includes("email")) {
-    questions.push(`¿Qué correos de ${table.name} no tienen teléfono o datos opcionales?`);
+    questions.push(
+      locale === "en"
+        ? `Which emails in ${table.name} are missing a phone or optional data?`
+        : `¿Qué correos de ${table.name} no tienen teléfono o datos opcionales?`
+    );
   }
   return questions.slice(0, 4);
 }

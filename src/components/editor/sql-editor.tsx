@@ -2,6 +2,7 @@
 
 import dynamic from "next/dynamic";
 import { useState, useSyncExternalStore } from "react";
+import { useLanguage } from "@/hooks/use-language";
 
 type SqlEditorProps = {
   value: string;
@@ -10,15 +11,21 @@ type SqlEditorProps = {
   height?: string;
   ariaLabel?: string;
   placeholder?: string;
+  label?: string;
 };
+
+function EditorLoading() {
+  const { t } = useLanguage();
+  return (
+    <div className="flex h-[min(40svh,20rem)] min-h-[200px] items-center justify-center rounded-xl border border-[color:var(--border-soft)] bg-[color:var(--surface)] text-sm text-[color:var(--muted-text)] md:h-[320px]">
+      {t("loadingEditor")}
+    </div>
+  );
+}
 
 const CodeMirrorEditor = dynamic(() => import("./codemirror-sql"), {
   ssr: false,
-  loading: () => (
-    <div className="flex h-[min(40svh,20rem)] min-h-[200px] items-center justify-center rounded-xl border border-[color:var(--cream)] bg-white text-sm text-[color:var(--muted-text)] md:h-[320px]">
-      Cargando editor SQL…
-    </div>
-  ),
+  loading: () => <EditorLoading />,
 });
 
 function useIsClient() {
@@ -46,20 +53,28 @@ export function SqlEditor({
   onChange,
   schema,
   height = "320px",
-  ariaLabel = "Editor SQL",
-  placeholder = "Escribe tu consulta SQL aquí…\nEjemplo: SELECT * FROM customers;",
+  ariaLabel,
+  placeholder,
+  label,
 }: SqlEditorProps) {
-  // Plain textarea by default so practice always works (CodeMirror can steal focus in some clients).
+  const { locale, t } = useLanguage();
   const [useHighlight, setUseHighlight] = useState(false);
   const mounted = useIsClient();
   const editorHeight = useResponsiveEditorHeight(height);
+  const resolvedLabel = label || t("yourSql");
+  const resolvedAria = ariaLabel || t("yourSql");
+  const resolvedPlaceholder =
+    placeholder ||
+    (locale === "en"
+      ? "Write your SQL query here…\nExample: SELECT * FROM customers;"
+      : "Escribe tu consulta SQL aquí…\nEjemplo: SELECT * FROM customers;");
 
   if (!useHighlight) {
     return (
       <div className="space-y-2">
         <div className="flex items-center justify-between gap-2">
-          <label className="text-sm font-medium text-[color:var(--coffee-dark)]" htmlFor="sql-plain-editor">
-            Tu consulta SQL
+          <label className="text-sm font-medium text-[color:var(--ink)]" htmlFor="sql-plain-editor">
+            {resolvedLabel}
           </label>
           {mounted ? (
             <button
@@ -67,7 +82,7 @@ export function SqlEditor({
               className="min-h-11 text-xs text-[color:var(--muted-text)] underline md:min-h-0"
               onClick={() => setUseHighlight(true)}
             >
-              Usar resaltado
+              {t("useHighlight")}
             </button>
           ) : null}
         </div>
@@ -75,10 +90,10 @@ export function SqlEditor({
           id="sql-plain-editor"
           value={value}
           onChange={(event) => onChange(event.target.value)}
-          placeholder={placeholder}
-          aria-label={ariaLabel}
+          placeholder={resolvedPlaceholder}
+          aria-label={resolvedAria}
           spellCheck={false}
-          className="min-h-[200px] w-full resize-y rounded-xl border-2 border-[color:var(--coffee-mid)] bg-white p-3 font-mono text-base leading-6 text-[color:var(--coffee-dark)] shadow-sm outline-none ring-[color:var(--terracotta)] placeholder:text-[color:var(--muted-text)] focus:ring-2 md:min-h-[280px] md:p-4 md:text-sm"
+          className="min-h-[200px] w-full resize-y rounded-xl border-2 border-[color:var(--accent)]/40 bg-[color:var(--surface)] p-3 font-mono text-base leading-6 text-[color:var(--ink)] shadow-sm outline-none ring-[color:var(--accent)] placeholder:text-[color:var(--muted-text)] focus:ring-2 md:min-h-[280px] md:p-4 md:text-sm"
           style={{ height: editorHeight }}
         />
       </div>
@@ -88,13 +103,13 @@ export function SqlEditor({
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between gap-2">
-        <label className="text-sm font-medium text-[color:var(--coffee-dark)]">Tu consulta SQL</label>
+        <label className="text-sm font-medium text-[color:var(--ink)]">{resolvedLabel}</label>
         <button
           type="button"
           className="min-h-11 text-xs text-[color:var(--muted-text)] underline md:min-h-0"
           onClick={() => setUseHighlight(false)}
         >
-          Editor simple
+          {t("simpleEditor")}
         </button>
       </div>
       <CodeMirrorEditor
@@ -102,8 +117,8 @@ export function SqlEditor({
         onChange={onChange}
         schema={schema}
         height={editorHeight}
-        ariaLabel={ariaLabel}
-        placeholder={placeholder}
+        ariaLabel={resolvedAria}
+        placeholder={resolvedPlaceholder}
       />
     </div>
   );

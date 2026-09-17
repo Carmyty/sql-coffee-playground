@@ -4,7 +4,7 @@ import type { ReactNode } from "react";
 
 export function AppShell({ children, title }: { children: ReactNode; title?: string }) {
   return (
-    <div className="min-h-dvh bg-[color:var(--page-bg)] text-[color:var(--coffee-dark)]">
+    <div className="min-h-dvh bg-[color:var(--page-bg)] text-[color:var(--ink)]">
       <div className="mx-auto flex min-h-dvh max-w-[1600px] flex-col lg:flex-row">
         <AppSidebar />
         <div className="flex min-w-0 flex-1 flex-col pb-16 lg:pb-0">

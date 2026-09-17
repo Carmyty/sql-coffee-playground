@@ -10,13 +10,20 @@ import {
   LayoutDashboard,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useLanguage } from "@/hooks/use-language";
+import type { MessageKey } from "@/lib/i18n/messages";
 
-const links = [
-  { href: "/", label: "Dashboard", shortLabel: "Inicio", icon: LayoutDashboard },
-  { href: "/learn", label: "Ruta de aprendizaje", shortLabel: "Ruta", icon: BookOpenText },
-  { href: "/explore", label: "Explorar datos", shortLabel: "Datos", icon: Compass },
-  { href: "/lab", label: "Laboratorio libre", shortLabel: "Lab", icon: FlaskConical },
-  { href: "/lessons", label: "Mini lecciones", shortLabel: "Lecciones", icon: Coffee },
+const links: Array<{
+  href: string;
+  labelKey: MessageKey;
+  shortKey: MessageKey;
+  icon: typeof LayoutDashboard;
+}> = [
+  { href: "/", labelKey: "navDashboard", shortKey: "navDashboardShort", icon: LayoutDashboard },
+  { href: "/learn", labelKey: "navLearn", shortKey: "navLearnShort", icon: BookOpenText },
+  { href: "/explore", labelKey: "navExplore", shortKey: "navExploreShort", icon: Compass },
+  { href: "/lab", labelKey: "navLab", shortKey: "navLabShort", icon: FlaskConical },
+  { href: "/lessons", labelKey: "navLessons", shortKey: "navLessonsShort", icon: Coffee },
 ];
 
 function isActive(pathname: string, href: string) {
@@ -25,6 +32,7 @@ function isActive(pathname: string, href: string) {
 
 function NavLinks({ compact = false }: { compact?: boolean }) {
   const pathname = usePathname();
+  const { t } = useLanguage();
 
   return (
     <nav className={cn("flex", compact ? "w-full" : "flex-col gap-1 p-3")} aria-label="Principal">
@@ -42,15 +50,17 @@ function NavLinks({ compact = false }: { compact?: boolean }) {
                 : "flex min-h-11 items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors lg:min-h-0",
               active
                 ? compact
-                  ? "text-[color:var(--terracotta)]"
-                  : "bg-[color:var(--coffee-mid)] text-white shadow-sm"
+                  ? "text-[color:var(--accent)]"
+                  : "bg-[color:var(--accent)] text-[color:var(--primary-foreground)] shadow-sm"
                 : compact
                   ? "text-[color:var(--muted-text)]"
-                  : "text-[color:var(--coffee-dark)]/80 hover:bg-[color:var(--cream)]"
+                  : "text-[color:var(--ink)]/80 hover:bg-[color:var(--cream)]"
             )}
           >
             <Icon className="size-4 shrink-0" aria-hidden />
-            <span className={cn(compact && "truncate")}>{compact ? link.shortLabel : link.label}</span>
+            <span className={cn(compact && "truncate")}>
+              {compact ? t(link.shortKey) : t(link.labelKey)}
+            </span>
           </Link>
         );
       })}
@@ -61,11 +71,11 @@ function NavLinks({ compact = false }: { compact?: boolean }) {
 function Brand() {
   return (
     <div className="flex items-center gap-2 px-5 py-5">
-      <div className="flex size-10 items-center justify-center rounded-2xl bg-[color:var(--cream)]">
-        <Coffee className="size-5 text-[color:var(--terracotta)]" />
+      <div className="flex size-10 items-center justify-center rounded-2xl bg-[color:var(--accent-soft)]">
+        <Coffee className="size-5 text-[color:var(--accent)]" />
       </div>
       <div>
-        <p className="font-[family-name:var(--font-display)] text-lg leading-tight text-[color:var(--coffee-dark)]">
+        <p className="font-[family-name:var(--font-display)] text-lg leading-tight text-[color:var(--ink)]">
           SQL Coffee
         </p>
         <p className="text-xs text-[color:var(--muted-text)]">Playground</p>
@@ -75,10 +85,20 @@ function Brand() {
 }
 
 function SidebarNote() {
+  const { locale } = useLanguage();
   return (
     <div className="mt-auto p-4 text-xs leading-relaxed text-[color:var(--muted-text)]">
-      Lectura en <code className="rounded bg-[color:var(--cream)] px-1">coffee_chain</code>. Escritura solo en{" "}
-      <code className="rounded bg-[color:var(--cream)] px-1">sql_playground</code>.
+      {locale === "es" ? (
+        <>
+          Lectura en <code className="rounded bg-[color:var(--cream)] px-1">coffee_chain</code>. Escritura
+          solo en <code className="rounded bg-[color:var(--cream)] px-1">sql_playground</code>.
+        </>
+      ) : (
+        <>
+          Read from <code className="rounded bg-[color:var(--cream)] px-1">coffee_chain</code>. Write only
+          in <code className="rounded bg-[color:var(--cream)] px-1">sql_playground</code>.
+        </>
+      )}
     </div>
   );
 }
@@ -86,19 +106,19 @@ function SidebarNote() {
 export function AppSidebar() {
   return (
     <>
-      <div className="flex shrink-0 items-center gap-2 border-b border-[color:var(--cream)] bg-white px-3 py-2.5 lg:hidden pt-[max(0.625rem,env(safe-area-inset-top))]">
-        <Link href="/" className="flex min-h-11 items-center gap-2 font-semibold text-[color:var(--coffee-dark)]">
-          <Coffee className="size-5 text-[color:var(--terracotta)]" />
+      <div className="flex shrink-0 items-center gap-2 border-b border-[color:var(--border-soft)] bg-[color:var(--surface)] px-3 py-2.5 pt-[max(0.625rem,env(safe-area-inset-top))] lg:hidden">
+        <Link href="/" className="flex min-h-11 items-center gap-2 font-semibold text-[color:var(--ink)]">
+          <Coffee className="size-5 text-[color:var(--accent)]" />
           SQL Coffee
         </Link>
       </div>
       <nav
-        className="fixed inset-x-0 bottom-0 z-[100] border-t border-[color:var(--cream)] bg-white pb-[env(safe-area-inset-bottom)] lg:hidden"
+        className="fixed inset-x-0 bottom-0 z-[100] border-t border-[color:var(--border-soft)] bg-[color:var(--surface)] pb-[env(safe-area-inset-bottom)] lg:hidden"
         aria-label="Navegación móvil"
       >
         <NavLinks compact />
       </nav>
-      <aside className="hidden h-full w-64 shrink-0 overflow-y-auto border-r border-[color:var(--cream)] bg-white/90 lg:flex lg:flex-col">
+      <aside className="hidden h-full w-64 shrink-0 overflow-y-auto border-r border-[color:var(--border-soft)] bg-[color:var(--surface)]/95 lg:flex lg:flex-col">
         <Brand />
         <NavLinks />
         <SidebarNote />

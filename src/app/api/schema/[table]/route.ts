@@ -10,11 +10,12 @@ export async function GET(
     const { table } = await context.params;
     const url = new URL(request.url);
     const schema = url.searchParams.get("schema") || getDefaultSchema();
+    const lang = url.searchParams.get("lang") === "en" ? "en" : "es";
     const preview = await previewTable(schema, table, 50);
     return NextResponse.json({
       ok: true,
       ...preview,
-      questions: exampleQuestionsForTable(preview.table),
+      questions: exampleQuestionsForTable(preview.table, lang),
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : "No se pudo previsualizar la tabla.";

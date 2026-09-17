@@ -7,6 +7,7 @@ import { SqlEditor } from "@/components/editor/sql-editor";
 import { ResultsTable } from "@/components/exercise/results-table";
 import { AccuracyBar } from "@/components/exercise/accuracy-bar";
 import { scoreLiveAccuracy } from "@/lib/live-accuracy";
+import { useLanguage } from "@/hooks/use-language";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -18,6 +19,7 @@ type HistoryItem = { id: string; sql: string; at: string; favorite?: boolean };
 const HISTORY_KEY = "sql-coffee-lab-history-v1";
 
 export default function LabPage() {
+  const { locale, t } = useLanguage();
   const [sql, setSql] = useState("SELECT name, city FROM stores LIMIT 10;");
   const [mode, setMode] = useState<"read" | "sandbox">("read");
   const [schemaMap, setSchemaMap] = useState<Record<string, string[]>>({});
@@ -46,17 +48,22 @@ export default function LabPage() {
 
   const accuracy = useMemo(
     () =>
-      scoreLiveAccuracy(sql, {
-        environment: mode,
-        suggestedTables: [],
-        concepts: [],
-        validation: {
-          requiredKeywords: mode === "read" ? ["select", "from"] : [],
-          matchMode: "exists",
+      scoreLiveAccuracy(
+        sql,
+        {
+          environment: mode,
+          suggestedTables: [],
+          concepts: [],
+          validation: {
+            requiredKeywords: mode === "read" ? ["select", "from"] : [],
+            matchMode: "exists",
+          },
         },
-      }),
-    [sql, mode]
+        locale
+      ),
+    [sql, mode, locale]
   );
+
   useEffect(() => {
     fetch("/api/schema")
       .then((res) => res.json())
@@ -132,36 +139,36 @@ export default function LabPage() {
   }
 
   return (
-    <AppShell title="Laboratorio libre">
+    <AppShell title={t("pageLab")}>
       <div className="animate-fade-up grid min-w-0 gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(0,300px)]">
         <div className="space-y-4">
           <div className="flex flex-wrap items-center gap-2">
-            <Badge className="max-w-full whitespace-normal bg-[color:var(--coffee-mid)] text-white hover:bg-[color:var(--coffee-mid)]">
-              {mode === "read" ? "Lectura: coffee_chain" : "Práctica segura: sql_playground"}
+            <Badge className="max-w-full whitespace-normal bg-[color:var(--accent)] text-[color:var(--primary-foreground)] hover:bg-[color:var(--accent)]">
+              {mode === "read" ? t("envRead") : t("envSandbox")}
             </Badge>
             <Button variant={mode === "read" ? "default" : "outline"} size="sm" onClick={() => setMode("read")}>
-              Lectura
+              {t("modeRead")}
             </Button>
             <Button
               variant={mode === "sandbox" ? "default" : "outline"}
               size="sm"
               onClick={() => setMode("sandbox")}
             >
-              Sandbox
+              {t("modeSandbox")}
             </Button>
           </div>
 
           <AccuracyBar accuracy={accuracy} />
-          <SqlEditor value={sql} onChange={setSql} schema={schemaMap} height="320px" />
+          <SqlEditor value={sql} onChange={setSql} schema={schemaMap} height="320px" label={t("yourSql")} />
 
           <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
             <Button className="max-sm:w-full" onClick={() => runQuery(false)} disabled={busy}>
               <Play className="size-4" />
-              Ejecutar
+              {t("run")}
             </Button>
             {pendingConfirm ? (
               <Button variant="destructive" className="max-sm:w-full" onClick={() => runQuery(true)} disabled={busy}>
-                Confirmar modificación
+                {t("confirmMutation")}
               </Button>
             ) : null}
             <Button
@@ -171,35 +178,35 @@ export default function LabPage() {
                 try {
                   setSql(format(sql, { language: "postgresql" }));
                 } catch {
-                  setExplainText("No se pudo formatear la consulta.");
+                  setExplainText(t("formatFail"));
                 }
               }}
             >
-              Formatear
+              {t("format")}
             </Button>
             <Button variant="outline" className="max-sm:w-full" onClick={() => setSql("")}>
               <Eraser className="size-4" />
-              Limpiar
+              {t("clear")}
             </Button>
             <Button variant="secondary" className="max-sm:w-full" onClick={explain}>
               <Sparkles className="size-4" />
-              Explícame esta consulta
+              {t("explainQuery")}
             </Button>
             <Button variant="secondary" className="max-sm:w-full" onClick={improve}>
-              Dame una pista para mejorarla
+              {t("improveHint")}
             </Button>
           </div>
 
           {explainText ? (
             <Alert>
-              <AlertTitle>Explicación</AlertTitle>
+              <AlertTitle>{t("explanation")}</AlertTitle>
               <AlertDescription className="whitespace-pre-wrap">{explainText}</AlertDescription>
             </Alert>
           ) : null}
 
           {improveTips.length > 0 ? (
             <Alert>
-              <AlertTitle>Pistas de mejora (sin reescribir tu query)</AlertTitle>
+              <AlertTitle>{t("improveTipsTitle")}</AlertTitle>
               <AlertDescription>
                 <ul className="list-disc space-y-1 pl-4">
                   {improveTips.map((tip) => (
@@ -212,7 +219,7 @@ export default function LabPage() {
 
           {result?.error ? (
             <Alert variant="destructive">
-              <AlertTitle>Error explicado</AlertTitle>
+              <AlertTitle>{t("explainedError")}</AlertTitle>
               <AlertDescription>
                 <p className="font-medium">{result.error.beginnerHint}</p>
                 <p className="mt-1 font-mono text-xs opacity-80">{result.error.message}</p>
@@ -222,7 +229,7 @@ export default function LabPage() {
 
           {result?.warning ? (
             <Alert>
-              <AlertTitle>Advertencia</AlertTitle>
+              <AlertTitle>{t("warning")}</AlertTitle>
               <AlertDescription>{result.warning.message}</AlertDescription>
             </Alert>
           ) : null}
@@ -230,7 +237,7 @@ export default function LabPage() {
           {result && !result.error && !result.warning?.requiresConfirm ? (
             <div className="space-y-2">
               <p className="text-sm text-[color:var(--muted-text)]">
-                {result.rowCount} filas · {result.executionMs} ms · {result.schema}
+                {result.rowCount} {t("rows")} · {result.executionMs} ms · {result.schema}
               </p>
               <ResultsTable columns={result.columns} rows={result.rows} />
             </div>
@@ -239,22 +246,22 @@ export default function LabPage() {
 
         <Card className="h-fit">
           <CardHeader>
-            <CardTitle>Historial local</CardTitle>
-            <CardDescription>Consultas y favoritos guardados en este navegador.</CardDescription>
+            <CardTitle>{t("localHistory")}</CardTitle>
+            <CardDescription>{t("localHistoryDesc")}</CardDescription>
           </CardHeader>
           <CardContent className="space-y-2">
             {history.length === 0 ? (
-              <p className="text-sm text-[color:var(--muted-text)]">Todavía no hay historial.</p>
+              <p className="text-sm text-[color:var(--muted-text)]">{t("noHistoryYet")}</p>
             ) : (
               history.map((item) => (
-                <div key={item.id} className="rounded-xl border border-[color:var(--cream)] p-2 text-xs">
+                <div key={item.id} className="rounded-xl border border-[color:var(--border-soft)] p-2 text-xs">
                   <div className="mb-1 flex items-center justify-between gap-2">
                     <button className="underline" onClick={() => setSql(item.sql)}>
-                      Cargar
+                      {t("load")}
                     </button>
-                    <button onClick={() => toggleFavorite(item.id)} aria-label="Marcar favorito">
+                    <button onClick={() => toggleFavorite(item.id)} aria-label={t("markFavorite")}>
                       <Star
-                        className={`size-4 ${item.favorite ? "fill-[color:var(--terracotta)] text-[color:var(--terracotta)]" : ""}`}
+                        className={`size-4 ${item.favorite ? "fill-[color:var(--accent)] text-[color:var(--accent)]" : ""}`}
                       />
                     </button>
                   </div>

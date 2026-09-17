@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
 import { Fraunces, Source_Sans_3, JetBrains_Mono } from "next/font/google";
 import { ThemeProvider } from "@/components/providers/theme-provider";
+import { LanguageProvider } from "@/hooks/use-language";
 import { ProgressProvider } from "@/hooks/use-progress";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -33,8 +34,8 @@ export const viewport: Viewport = {
   initialScale: 1,
   viewportFit: "cover",
   themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#f7f3ee" },
-    { media: "(prefers-color-scheme: dark)", color: "#1c1612" },
+    { media: "(prefers-color-scheme: light)", color: "#f3f6f4" },
+    { media: "(prefers-color-scheme: dark)", color: "#121816" },
   ],
 };
 
@@ -43,12 +44,14 @@ export default function RootLayout({ children }: { children: ReactNode }) {
     <html lang="es" suppressHydrationWarning className={`${display.variable} ${sans.variable} ${mono.variable} h-full`}>
       <body className="min-h-full font-sans antialiased">
         <ThemeProvider>
-          <ProgressProvider>
-            <TooltipProvider>
-              {children}
-              <Toaster />
-            </TooltipProvider>
-          </ProgressProvider>
+          <LanguageProvider>
+            <ProgressProvider>
+              <TooltipProvider>
+                {children}
+                <Toaster />
+              </TooltipProvider>
+            </ProgressProvider>
+          </LanguageProvider>
         </ThemeProvider>
       </body>
     </html>

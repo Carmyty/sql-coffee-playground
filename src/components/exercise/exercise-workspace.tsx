@@ -5,9 +5,14 @@ import Link from "next/link";
 import { format } from "sql-formatter";
 import {
   AlertTriangle,
+  ArrowLeft,
+  ArrowRight,
   CheckCircle2,
+  ChevronLeft,
+  ChevronRight,
   Eraser,
   Lightbulb,
+  List,
   Play,
   RotateCcw,
   Sparkles,
@@ -15,15 +20,20 @@ import {
 } from "lucide-react";
 import type { Exercise } from "@/data/types";
 import { getNextExercise, getPreviousExercise } from "@/data/exercises";
+import { LEARNING_MODULES } from "@/data/modules";
 import { scoreLiveAccuracy } from "@/lib/live-accuracy";
+import { localizeExercise } from "@/lib/i18n/exercises-en";
+import { localizeModule } from "@/lib/i18n/modules-en";
 import { AccuracyBar } from "@/components/exercise/accuracy-bar";
+import { CompletionBanner } from "@/components/exercise/completion-banner";
 import { SqlEditor } from "@/components/editor/sql-editor";
 import { ResultsTable } from "@/components/exercise/results-table";
 import { useProgress } from "@/hooks/use-progress";
+import { useLanguage } from "@/hooks/use-language";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { cn } from "@/lib/utils";
 
 type SchemaPayload = {
   ok: boolean;
@@ -61,7 +71,20 @@ type ValidateResponse = {
   error?: string;
 };
 
+type ExpectedPreview = {
+  ok: boolean;
+  mode?: "table" | "mutation" | "unavailable";
+  description?: string;
+  columns?: Array<{ name: string }>;
+  rows?: Record<string, unknown>[];
+  rowCount?: number;
+  truncated?: boolean;
+  error?: string;
+};
+
 export function ExerciseWorkspace({ exercise }: { exercise: Exercise }) {
+  const { locale, t } = useLanguage();
+  const localized = useMemo(() => localizeExercise(exercise, locale), [exercise, locale]);
   const { getExercise, recordVisit, recordAttempt, unlockSolution, setHintsUsed } = useProgress();
   const progress = getExercise(exercise.id);
   const [sql, setSql] = useState(progress.lastSql || exercise.starterSql);
@@ -73,19 +96,42 @@ export function ExerciseWorkspace({ exercise }: { exercise: Exercise }) {
   const [reference, setReference] = useState<ValidateResponse["reference"]>();
   const [pendingConfirm, setPendingConfirm] = useState(false);
   const [explainText, setExplainText] = useState<string | null>(null);
+  const [showCompletion, setShowCompletion] = useState(false);
+  const [expectedPreview, setExpectedPreview] = useState<ExpectedPreview | null>(null);
 
-  const accuracy = useMemo(() => scoreLiveAccuracy(sql, exercise), [sql, exercise]);
+  const accuracy = useMemo(
+    () => scoreLiveAccuracy(sql, exercise, locale),
+    [sql, exercise, locale]
+  );
   const previous = getPreviousExercise(exercise.id);
   const next = getNextExercise(exercise.id);
-  const envLabel =
-    exercise.environment === "read" ? "Lectura: coffee_chain" : "Práctica segura: sql_playground";
+  const previousLocalized = previous ? localizeExercise(previous, locale) : undefined;
+  const nextLocalized = next ? localizeExercise(next, locale) : undefined;
+  const learningModule = LEARNING_MODULES.find((module) => module.id === exercise.moduleId);
+  const moduleTitle = learningModule
+    ? localizeModule(learningModule, locale).title
+    : t("pageLearn");
+  const envLabel = exercise.environment === "read" ? t("envRead") : t("envSandbox");
   const solutionReady =
     progress.solutionUnlocked ||
     progress.attempts >= exercise.unlockAfterAttempts ||
     Boolean(reference);
+  const isCorrect = validation?.status === "correct" || progress.status === "correct";
+  const difficultyLabel =
+    exercise.difficulty === "basico"
+      ? t("difficultyBasico")
+      : exercise.difficulty === "intermedio"
+        ? t("difficultyIntermedio")
+        : t("difficultyAvanzado");
 
   useEffect(() => {
     recordVisit(exercise.id, sql);
+    setShowCompletion(false);
+    setValidation(undefined);
+    setResult(null);
+    setReference(undefined);
+    setExplainText(null);
+    setPendingConfirm(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [exercise.id]);
 
@@ -102,6 +148,30 @@ export function ExerciseWorkspace({ exercise }: { exercise: Exercise }) {
       })
       .catch(() => undefined);
   }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    setExpectedPreview(null);
+    fetch(`/api/exercise/expected?exerciseId=${encodeURIComponent(exercise.id)}`)
+      .then((res) => res.json())
+      .then((data: ExpectedPreview) => {
+        if (!cancelled) setExpectedPreview(data);
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setExpectedPreview({
+            ok: true,
+            mode: "unavailable",
+            description: localized.expectedResult,
+            columns: [],
+            rows: [],
+          });
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [exercise.id, localized.expectedResult]);
 
   async function runQuery(confirmMutation = false) {
     setBusy(true);
@@ -129,7 +199,7 @@ export function ExerciseWorkspace({ exercise }: { exercise: Exercise }) {
           executionMs: 0,
           error: {
             message: data.error || "Error",
-            beginnerHint: "Revisa la consulta e inténtalo de nuevo.",
+            beginnerHint: t("reviewQuery"),
           },
         });
         return;
@@ -163,6 +233,10 @@ export function ExerciseWorkspace({ exercise }: { exercise: Exercise }) {
         hintsUsed: hintLevel,
         unlockSolution: data.solutionUnlocked,
       });
+
+      if (status === "correct") {
+        setShowCompletion(true);
+      }
     } finally {
       setBusy(false);
     }
@@ -174,7 +248,7 @@ export function ExerciseWorkspace({ exercise }: { exercise: Exercise }) {
       await fetch("/api/sandbox/reset", { method: "POST" });
       setResult(null);
       setValidation(undefined);
-      setExplainText("Sandbox restablecido a su estado inicial.");
+      setExplainText(t("sandboxReset"));
     } finally {
       setBusy(false);
     }
@@ -203,7 +277,7 @@ export function ExerciseWorkspace({ exercise }: { exercise: Exercise }) {
     try {
       setSql(format(sql, { language: "postgresql" }));
     } catch {
-      setExplainText("No se pudo formatear: revisa la sintaxis básica.");
+      setExplainText(t("formatFail"));
     }
   }
 
@@ -211,232 +285,362 @@ export function ExerciseWorkspace({ exercise }: { exercise: Exercise }) {
     unlockSolution(exercise.id);
     setReference({
       sql: exercise.referenceSql,
-      explanation: exercise.referenceExplanation,
+      explanation: localized.referenceExplanation,
     });
   }
 
+  const expectedDescription = localized.expectedResult;
+
   return (
-    <div className="grid min-w-0 gap-4 xl:grid-cols-[minmax(0,320px)_minmax(0,1fr)_minmax(0,360px)]">
-      <Card className="h-fit order-2 border-[color:var(--cream)] bg-white shadow-sm xl:order-1">
-        <CardHeader>
-          <div className="flex flex-wrap items-center gap-2">
-            <Badge variant="secondary">{exercise.difficulty}</Badge>
-            <Badge variant="outline">{exercise.estimatedMinutes} min</Badge>
-          </div>
-          <CardTitle className="font-[family-name:var(--font-display)] text-xl text-[color:var(--coffee-dark)] sm:text-2xl">
-            {exercise.title}
-          </CardTitle>
-          <CardDescription>{exercise.objective}</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4 text-sm">
-          <div>
-            <p className="mb-1 font-medium">Resultado esperado (en palabras)</p>
-            <p className="text-[color:var(--muted-text)]">{exercise.expectedResult}</p>
-          </div>
-          <div>
-            <p className="mb-1 font-medium">Tablas sugeridas</p>
-            <div className="flex flex-wrap gap-1.5">
-              {exercise.suggestedTables.map((table) => (
-                <Badge key={table} variant="outline">
-                  {table}
-                </Badge>
-              ))}
-            </div>
-          </div>
-          <div>
-            <p className="mb-1 font-medium">Conceptos</p>
-            <div className="flex flex-wrap gap-1.5">
-              {exercise.concepts.map((concept) => (
-                <Badge key={concept}>{concept}</Badge>
-              ))}
-            </div>
-          </div>
-          <div>
-            <p className="mb-1 font-medium">Checklist de razonamiento</p>
-            <ul className="list-disc space-y-1 pl-5 text-[color:var(--muted-text)]">
-              {exercise.reasoningChecklist.map((item) => (
-                <li key={item}>{item}</li>
-              ))}
-            </ul>
-          </div>
-          <div className="space-y-2">
-            <Button variant="outline" className="w-full" onClick={revealHint} disabled={hintLevel >= 3}>
-              <Lightbulb className="size-4" />
-              Pedir pista {hintLevel}/3
-            </Button>
-            {hintLevel >= 1 ? (
-              <Alert>
-                <AlertTitle>Pista 1</AlertTitle>
-                <AlertDescription>{exercise.hints[0]}</AlertDescription>
-              </Alert>
-            ) : null}
-            {hintLevel >= 2 ? (
-              <Alert>
-                <AlertTitle>Pista 2</AlertTitle>
-                <AlertDescription className="font-mono text-xs">{exercise.hints[1]}</AlertDescription>
-              </Alert>
-            ) : null}
-            {hintLevel >= 3 ? (
-              <Alert>
-                <AlertTitle>Pista 3</AlertTitle>
-                <AlertDescription>{exercise.hints[2]}</AlertDescription>
-              </Alert>
-            ) : null}
-          </div>
-          <div className="flex gap-2">
-            {previous ? (
-              <Link
-                href={`/learn/${previous.moduleId}/${previous.id}`}
-                className="inline-flex h-11 flex-1 items-center justify-center rounded-lg text-sm hover:bg-muted md:h-8"
-              >
-                Anterior
-              </Link>
-            ) : null}
-            {next ? (
-              <Link
-                href={`/learn/${next.moduleId}/${next.id}`}
-                className="inline-flex h-11 flex-1 items-center justify-center rounded-lg text-sm hover:bg-muted md:h-8"
-              >
-                Siguiente
-              </Link>
-            ) : null}
-          </div>
-        </CardContent>
-      </Card>
-
-      <div className="order-1 min-w-0 space-y-4 xl:order-2">
-        <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
-          <Badge className="w-fit bg-[color:var(--coffee-mid)] text-white hover:bg-[color:var(--coffee-mid)]">
-            {envLabel}
-          </Badge>
-          <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
-            <Button variant="outline" size="sm" onClick={formatSql}>
-              Formatear
-            </Button>
-            <Button variant="outline" size="sm" onClick={() => setSql(exercise.starterSql)}>
-              <Eraser className="size-4" />
-              Limpiar
-            </Button>
-            <Link
-              href="/explore"
-              className="inline-flex h-9 items-center justify-center gap-1.5 rounded-lg border px-2.5 text-sm md:h-7"
-            >
-              <Table2 className="size-4" />
-              Ver esquema
-            </Link>
-            {exercise.environment === "sandbox" ? (
-              <Button variant="outline" size="sm" className="col-span-2 sm:col-span-1" onClick={resetSandbox} disabled={busy}>
-                <RotateCcw className="size-4" />
-                Reiniciar sandbox
-              </Button>
-            ) : null}
-          </div>
-        </div>
-
-        <AccuracyBar accuracy={accuracy} />
-        <SqlEditor value={sql} onChange={setSql} schema={schemaMap} height="320px" />
-
-        <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
-          <Button className="max-sm:min-h-11 max-sm:w-full" onClick={() => runQuery(false)} disabled={busy}>
-            <Play className="size-4" />
-            Ejecutar consulta
-          </Button>
-          {pendingConfirm ? (
-            <Button variant="destructive" className="max-sm:w-full" onClick={() => runQuery(true)} disabled={busy}>
-              <AlertTriangle className="size-4" />
-              Confirmar modificación
-            </Button>
-          ) : null}
-          <Button variant="secondary" className="max-sm:w-full" onClick={explainQuery} disabled={!sql.trim()}>
-            <Sparkles className="size-4" />
-            Explícame esta consulta
-          </Button>
-        </div>
-
-        {explainText ? (
-          <Alert>
-            <AlertTitle>Explicación</AlertTitle>
-            <AlertDescription className="whitespace-pre-wrap">{explainText}</AlertDescription>
-          </Alert>
-        ) : null}
-
-        {result?.warning ? (
-          <Alert>
-            <AlertTriangle className="size-4" />
-            <AlertTitle>Advertencia de impacto</AlertTitle>
-            <AlertDescription>
-              {result.warning.message}
-              {result.warning.estimatedRows !== undefined
-                ? ` Filas estimadas: ${result.warning.estimatedRows}.`
-                : ""}
-            </AlertDescription>
-          </Alert>
-        ) : null}
-
-        {result?.error ? (
-          <Alert variant="destructive">
-            <AlertTitle>Error explicado</AlertTitle>
-            <AlertDescription>
-              <p className="font-medium">{result.error.beginnerHint}</p>
-              <p className="mt-1 font-mono text-xs opacity-80">{result.error.message}</p>
-            </AlertDescription>
-          </Alert>
-        ) : null}
-
-        {result && !result.error ? (
-          <div className="space-y-2">
-            <p className="text-sm text-[color:var(--muted-text)]">
-              {result.rowCount} filas · {result.executionMs} ms · entorno {result.schema}
-            </p>
-            <ResultsTable columns={result.columns} rows={result.rows} />
-          </div>
-        ) : null}
+    <div className="mx-auto flex min-w-0 max-w-5xl flex-col gap-4">
+      <div className="flex justify-start">
+        <Link
+          href={`/learn/${exercise.moduleId}`}
+          className={cn(
+            buttonVariants({ variant: "outline", size: "sm" }),
+            "pressable gap-1.5 border-[color:var(--border-soft)] bg-[color:var(--surface)]"
+          )}
+          aria-label={t("backToSection")}
+        >
+          <List className="size-4" />
+          <span className="max-w-[16rem] truncate sm:max-w-none">
+            {t("backToSectionNamed", { title: moduleTitle })}
+          </span>
+        </Link>
       </div>
 
-      <Card className="order-3 h-fit border-[color:var(--cream)] bg-white shadow-sm xl:order-3">
-        <CardHeader>
-          <CardTitle>Validación y solución</CardTitle>
-          <CardDescription>
-            Intentos: {progress.attempts}. La solución se desbloquea tras {exercise.unlockAfterAttempts}{" "}
-            intentos o si la pides.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4 text-sm">
-          {validation ? (
-            <Alert>
-              {validation.status === "correct" ? <CheckCircle2 className="size-4" /> : null}
-              <AlertTitle>{validation.message}</AlertTitle>
-              <AlertDescription>{validation.explanation}</AlertDescription>
-            </Alert>
-          ) : (
-            <p className="text-[color:var(--muted-text)]">
-              Ejecuta tu consulta para recibir feedback. Aceptamos enfoques distintos si el resultado
-              cumple el objetivo.
-            </p>
-          )}
+      <div className="flex items-center justify-between gap-3">
+        {previous ? (
+          <Link
+            href={`/learn/${previous.moduleId}/${previous.id}`}
+            className={cn(
+              buttonVariants({ variant: "outline", size: "icon" }),
+              "pressable size-11 shrink-0 rounded-full border-[color:var(--border-soft)] bg-[color:var(--surface)]"
+            )}
+            aria-label={`${t("previousExercise")}: ${previousLocalized?.title}`}
+            title={previousLocalized?.title}
+          >
+            <ChevronLeft className="size-5" />
+          </Link>
+        ) : (
+          <span className="size-11 shrink-0" aria-hidden />
+        )}
 
+        <div className="min-w-0 flex-1 text-center">
+          <div className="mb-1 flex flex-wrap items-center justify-center gap-2">
+            <Badge variant="secondary" className="capitalize">
+              {difficultyLabel}
+            </Badge>
+            <Badge variant="outline">
+              {exercise.estimatedMinutes} {t("min")}
+            </Badge>
+            {isCorrect ? (
+              <Badge className="check-burst bg-[color:var(--success)] text-white hover:bg-[color:var(--success)]">
+                {t("completed")}
+              </Badge>
+            ) : null}
+          </div>
+          <h2 className="truncate font-[family-name:var(--font-display)] text-xl text-[color:var(--ink)] sm:text-2xl">
+            {localized.title}
+          </h2>
+        </div>
+
+        {next ? (
+          <Link
+            href={`/learn/${next.moduleId}/${next.id}`}
+            className={cn(
+              buttonVariants({ variant: "outline", size: "icon" }),
+              "pressable size-11 shrink-0 rounded-full border-[color:var(--border-soft)] bg-[color:var(--surface)]"
+            )}
+            aria-label={`${t("nextExercise")}: ${nextLocalized?.title}`}
+            title={nextLocalized?.title}
+          >
+            <ChevronRight className="size-5" />
+          </Link>
+        ) : (
+          <span className="size-11 shrink-0" aria-hidden />
+        )}
+      </div>
+
+      <section className="animate-fade-up space-y-3 rounded-2xl border border-[color:var(--border-soft)] bg-[color:var(--surface)] p-4 shadow-sm">
+        <div className="flex flex-wrap items-center gap-2">
+          <Badge className="bg-[color:var(--accent)] text-[color:var(--primary-foreground)] hover:bg-[color:var(--accent)]">
+            {envLabel}
+          </Badge>
+          <span className="text-xs text-[color:var(--muted-text)]">
+            {t("attempts")}: {progress.attempts}
+          </span>
+        </div>
+        <div>
+          <p className="mb-1 text-xs font-semibold uppercase tracking-[0.14em] text-[color:var(--muted-text)]">
+            {t("queryHint")}
+          </p>
+          <p className="text-base leading-relaxed text-[color:var(--ink)] sm:text-lg">{localized.objective}</p>
+        </div>
+        <AccuracyBar accuracy={accuracy} />
+      </section>
+
+      <section className="space-y-3 rounded-2xl border border-[color:var(--border-soft)] bg-[color:var(--surface)] p-4 shadow-sm">
+        <div className="flex flex-wrap gap-2">
+          <Button variant="outline" size="sm" className="pressable" onClick={formatSql}>
+            {t("format")}
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            className="pressable"
+            onClick={() => setSql(exercise.starterSql)}
+          >
+            <Eraser className="size-4" />
+            {t("clear")}
+          </Button>
+          <Link
+            href="/explore"
+            className={cn(buttonVariants({ variant: "outline", size: "sm" }), "pressable")}
+          >
+            <Table2 className="size-4" />
+            {t("viewSchema")}
+          </Link>
+          {exercise.environment === "sandbox" ? (
+            <Button
+              variant="outline"
+              size="sm"
+              className="pressable"
+              onClick={resetSandbox}
+              disabled={busy}
+            >
+              <RotateCcw className="size-4" />
+              {t("resetSandbox")}
+            </Button>
+          ) : null}
+        </div>
+
+        <SqlEditor value={sql} onChange={setSql} schema={schemaMap} height="280px" label={t("yourSql")} />
+
+        <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+          <Button
+            className="pressable max-sm:min-h-12 max-sm:w-full bg-[color:var(--accent)] text-[color:var(--primary-foreground)] hover:bg-[color:var(--accent)]/90"
+            size="lg"
+            onClick={() => runQuery(false)}
+            disabled={busy}
+          >
+            <Play className="size-4" />
+            {busy ? t("running") : t("checkQuery")}
+          </Button>
+          {pendingConfirm ? (
+            <Button
+              variant="destructive"
+              className="pressable max-sm:w-full"
+              onClick={() => runQuery(true)}
+              disabled={busy}
+            >
+              <AlertTriangle className="size-4" />
+              {t("confirmMutation")}
+            </Button>
+          ) : null}
+          <Button
+            variant="secondary"
+            className="pressable max-sm:w-full"
+            onClick={explainQuery}
+            disabled={!sql.trim()}
+          >
+            <Sparkles className="size-4" />
+            {t("explainQuery")}
+          </Button>
+        </div>
+      </section>
+
+      <section className="animate-fade-up space-y-3 rounded-2xl border border-[color:var(--border-soft)] bg-[color:var(--accent-soft)]/50 p-4">
+        <div>
+          <p className="mb-1 text-xs font-semibold uppercase tracking-[0.14em] text-[color:var(--muted-text)]">
+            {t("expectedResult")}
+          </p>
+          <p className="text-sm leading-relaxed text-[color:var(--ink)] sm:text-base">
+            {expectedDescription}
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-1.5">
+          {exercise.suggestedTables.map((table) => (
+            <Badge key={table} variant="outline" className="bg-[color:var(--surface)]">
+              <Table2 className="mr-1 size-3" />
+              {table}
+            </Badge>
+          ))}
+        </div>
+        {expectedPreview?.mode === "table" && (expectedPreview.columns?.length ?? 0) > 0 ? (
+          <div className="space-y-2">
+            <p className="text-sm font-medium text-[color:var(--ink)]">{t("tableYouShouldSee")}</p>
+            <ResultsTable
+              columns={expectedPreview.columns || []}
+              rows={expectedPreview.rows || []}
+              pageSize={5}
+            />
+            {expectedPreview.truncated ? (
+              <p className="text-xs text-[color:var(--muted-text)]">{t("previewNote")}</p>
+            ) : null}
+          </div>
+        ) : expectedPreview?.mode === "mutation" ? (
+          <p className="rounded-xl border border-dashed border-[color:var(--border-soft)] bg-[color:var(--surface)] p-3 text-sm text-[color:var(--muted-text)]">
+            {t("mutationNote")}
+          </p>
+        ) : null}
+      </section>
+
+      {validation ? (
+        <Alert
+          className={cn(
+            "animate-pop-in",
+            validation.status === "correct"
+              ? "border-[color:var(--success)]/40 bg-[color:var(--success-soft)]"
+              : "border-[color:var(--border-soft)] bg-[color:var(--surface)]"
+          )}
+        >
+          {validation.status === "correct" ? (
+            <CheckCircle2 className="check-burst size-4 text-[color:var(--success)]" />
+          ) : null}
+          <AlertTitle className="text-[color:var(--ink)]">{validation.message}</AlertTitle>
+          <AlertDescription>{validation.explanation}</AlertDescription>
+        </Alert>
+      ) : null}
+
+      {explainText ? (
+        <Alert className="bg-[color:var(--surface)]">
+          <AlertTitle>{t("explanation")}</AlertTitle>
+          <AlertDescription className="whitespace-pre-wrap">{explainText}</AlertDescription>
+        </Alert>
+      ) : null}
+
+      {result?.warning ? (
+        <Alert className="bg-[color:var(--surface)]">
+          <AlertTriangle className="size-4" />
+          <AlertTitle>{t("impactWarning")}</AlertTitle>
+          <AlertDescription>
+            {result.warning.message}
+            {result.warning.estimatedRows !== undefined
+              ? ` ${t("estimatedRows")}: ${result.warning.estimatedRows}.`
+              : ""}
+          </AlertDescription>
+        </Alert>
+      ) : null}
+
+      {result?.error ? (
+        <Alert variant="destructive">
+          <AlertTitle>{t("explainedError")}</AlertTitle>
+          <AlertDescription>
+            <p className="font-medium">{result.error.beginnerHint}</p>
+            <p className="mt-1 font-mono text-xs opacity-80">{result.error.message}</p>
+          </AlertDescription>
+        </Alert>
+      ) : null}
+
+      {result && !result.error ? (
+        <div className="space-y-2 rounded-2xl border border-[color:var(--border-soft)] bg-[color:var(--surface)] p-4">
+          <p className="text-sm font-medium text-[color:var(--ink)]">{t("yourResult")}</p>
+          <p className="text-sm text-[color:var(--muted-text)]">
+            {result.rowCount} {t("rows")} · {result.executionMs} ms · {t("environment")} {result.schema}
+          </p>
+          <ResultsTable columns={result.columns} rows={result.rows} />
+        </div>
+      ) : null}
+
+      <section className="space-y-3 rounded-2xl border border-[color:var(--border-soft)] bg-[color:var(--surface)] p-4">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <p className="font-medium text-[color:var(--ink)]">{t("help")}</p>
+          <Button
+            variant="outline"
+            size="sm"
+            className="pressable"
+            onClick={revealHint}
+            disabled={hintLevel >= 3}
+          >
+            <Lightbulb className="size-4" />
+            {t("askHint")} {hintLevel}/3
+          </Button>
+        </div>
+        {hintLevel >= 1 ? (
+          <Alert>
+            <AlertTitle>
+              {t("hint")} 1
+            </AlertTitle>
+            <AlertDescription>{localized.hints[0]}</AlertDescription>
+          </Alert>
+        ) : null}
+        {hintLevel >= 2 ? (
+          <Alert>
+            <AlertTitle>
+              {t("hint")} 2
+            </AlertTitle>
+            <AlertDescription className="font-mono text-xs">{localized.hints[1]}</AlertDescription>
+          </Alert>
+        ) : null}
+        {hintLevel >= 3 ? (
+          <Alert>
+            <AlertTitle>
+              {t("hint")} 3
+            </AlertTitle>
+            <AlertDescription>{localized.hints[2]}</AlertDescription>
+          </Alert>
+        ) : null}
+
+        <div className="border-t border-[color:var(--border-soft)] pt-3">
+          <p className="mb-2 text-sm text-[color:var(--muted-text)]">
+            {t("solutionUnlock", { n: exercise.unlockAfterAttempts })}
+          </p>
           {!solutionReady ? (
-            <Button variant="outline" className="w-full" onClick={requestSolution}>
-              Quiero ver la solución
+            <Button variant="outline" className="pressable w-full sm:w-auto" onClick={requestSolution}>
+              {t("wantSolution")}
             </Button>
           ) : (
-            <div className="space-y-3">
-              <p className="font-medium">Solución de referencia (una de varias posibles)</p>
-              <pre className="overflow-x-auto whitespace-pre-wrap break-words rounded-lg bg-[color:var(--coffee-dark)] p-3 text-xs text-[color:var(--cream)]">
+            <div className="animate-fade-up space-y-3">
+              <p className="font-medium text-[color:var(--ink)]">{t("referenceSolution")}</p>
+              <pre className="overflow-x-auto whitespace-pre-wrap break-words rounded-xl bg-[color:var(--ink)] p-3 text-xs text-[color:var(--page-bg)]">
                 {(reference?.sql || exercise.referenceSql).trim()}
               </pre>
               <ul className="space-y-2">
-                {(reference?.explanation || exercise.referenceExplanation).map((item) => (
-                  <li key={item.clause} className="rounded-lg bg-[color:var(--cream)]/60 p-2">
-                    <p className="font-medium">{item.clause}</p>
-                    <p className="text-[color:var(--muted-text)]">{item.text}</p>
+                {(reference?.explanation || localized.referenceExplanation).map((item) => (
+                  <li key={item.clause} className="rounded-xl bg-[color:var(--cream)] p-3">
+                    <p className="font-medium text-[color:var(--ink)]">{item.clause}</p>
+                    <p className="text-sm text-[color:var(--muted-text)]">{item.text}</p>
                   </li>
                 ))}
               </ul>
             </div>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </section>
+
+      <div className="flex items-center justify-between gap-3 pb-4">
+        {previous ? (
+          <Link
+            href={`/learn/${previous.moduleId}/${previous.id}`}
+            className="inline-flex min-h-11 items-center gap-1.5 text-sm font-medium text-[color:var(--accent)] hover:underline"
+          >
+            <ArrowLeft className="size-4" />
+            {t("previous")}
+          </Link>
+        ) : (
+          <span />
+        )}
+        {next ? (
+          <Link
+            href={`/learn/${next.moduleId}/${next.id}`}
+            className="inline-flex min-h-11 items-center gap-1.5 text-sm font-medium text-[color:var(--accent)] hover:underline"
+          >
+            {t("next")}
+            <ArrowRight className="size-4" />
+          </Link>
+        ) : (
+          <span />
+        )}
+      </div>
+
+      {showCompletion && validation?.status === "correct" ? (
+        <CompletionBanner
+          exerciseTitle={localized.title}
+          next={next}
+          onDismiss={() => setShowCompletion(false)}
+        />
+      ) : null}
     </div>
   );
 }

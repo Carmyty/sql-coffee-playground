@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { useMemo, useState } from "react";
+import { useLanguage } from "@/hooks/use-language";
 
 type ResultsTableProps = {
   columns: Array<{ name: string }>;
@@ -18,6 +19,7 @@ type ResultsTableProps = {
 };
 
 export function ResultsTable({ columns, rows, pageSize = 10 }: ResultsTableProps) {
+  const { t } = useLanguage();
   const [page, setPage] = useState(0);
   const totalPages = Math.max(1, Math.ceil(rows.length / pageSize));
   const pageRows = useMemo(
@@ -27,15 +29,15 @@ export function ResultsTable({ columns, rows, pageSize = 10 }: ResultsTableProps
 
   if (columns.length === 0) {
     return (
-      <div className="rounded-xl border border-dashed border-[color:var(--cream)] bg-white p-6 text-sm text-[color:var(--muted-text)]">
-        Sin columnas que mostrar. Ejecuta una consulta SELECT para ver resultados.
+      <div className="rounded-xl border border-dashed border-[color:var(--border-soft)] bg-[color:var(--surface)] p-6 text-sm text-[color:var(--muted-text)]">
+        {t("noColumns")}
       </div>
     );
   }
 
   return (
     <div className="space-y-3">
-      <div className="max-w-full overflow-x-auto overscroll-x-contain rounded-xl border border-[color:var(--cream)] bg-white [-webkit-overflow-scrolling:touch]">
+      <div className="max-w-full overflow-x-auto overscroll-x-contain rounded-xl border border-[color:var(--border-soft)] bg-[color:var(--surface)] [-webkit-overflow-scrolling:touch]">
         <Table>
           <TableHeader>
             <TableRow>
@@ -50,7 +52,7 @@ export function ResultsTable({ columns, rows, pageSize = 10 }: ResultsTableProps
             {pageRows.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={columns.length} className="text-[color:var(--muted-text)]">
-                  0 filas.
+                  0 {t("rows")}.
                 </TableCell>
               </TableRow>
             ) : (
@@ -69,11 +71,12 @@ export function ResultsTable({ columns, rows, pageSize = 10 }: ResultsTableProps
       </div>
       <div className="flex flex-col gap-2 text-xs text-[color:var(--muted-text)] sm:flex-row sm:items-center sm:justify-between">
         <span>
-          {rows.length} fila{rows.length === 1 ? "" : "s"} · página {page + 1} / {totalPages}
+          {rows.length} {rows.length === 1 ? t("rowSingular") : t("rows")} ·{" "}
+          {t("pageOf", { page: page + 1, total: totalPages })}
         </span>
         <div className="flex gap-2">
           <Button variant="outline" size="sm" disabled={page === 0} onClick={() => setPage((p) => p - 1)}>
-            Anterior
+            {t("previous")}
           </Button>
           <Button
             variant="outline"
@@ -81,7 +84,7 @@ export function ResultsTable({ columns, rows, pageSize = 10 }: ResultsTableProps
             disabled={page >= totalPages - 1}
             onClick={() => setPage((p) => p + 1)}
           >
-            Siguiente
+            {t("next")}
           </Button>
         </div>
       </div>

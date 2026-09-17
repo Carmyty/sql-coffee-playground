@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { useLanguage } from "@/hooks/use-language";
 
 type TableMeta = {
   name: string;
@@ -30,6 +31,7 @@ type Graph = {
 };
 
 export default function ExplorePage() {
+  const { locale, t } = useLanguage();
   const [graph, setGraph] = useState<Graph | null>(null);
   const [schemas, setSchemas] = useState<string[]>([]);
   const [schema, setSchema] = useState("coffee_chain");
@@ -47,7 +49,7 @@ export default function ExplorePage() {
         .then((res) => res.json())
         .then((data) => {
           if (cancelled) return;
-          if (!data.ok) throw new Error(data.error || "No se pudo cargar el esquema");
+          if (!data.ok) throw new Error(data.error || t("exploreErrorTitle"));
           setSchemas(data.schemas || []);
           setGraph(data.graph);
           setSelected(data.graph.tables[0]?.name ?? null);
@@ -64,18 +66,20 @@ export default function ExplorePage() {
       cancelled = true;
       window.clearTimeout(timer);
     };
-  }, [schema]);
+  }, [schema, t]);
 
   useEffect(() => {
     if (!selected) return;
-    fetch(`/api/schema/${encodeURIComponent(selected)}?schema=${encodeURIComponent(schema)}`)
+    fetch(
+      `/api/schema/${encodeURIComponent(selected)}?schema=${encodeURIComponent(schema)}&lang=${locale}`
+    )
       .then((res) => res.json())
       .then((data) => {
-        if (!data.ok) throw new Error(data.error || "No se pudo previsualizar");
+        if (!data.ok) throw new Error(data.error || t("exploreErrorTitle"));
         setPreview({ rows: data.rows || [], questions: data.questions || [] });
       })
       .catch((err: Error) => setError(err.message));
-  }, [selected, schema]);
+  }, [selected, schema, locale, t]);
 
   const filtered = useMemo(() => {
     if (!graph) return [];
@@ -91,15 +95,15 @@ export default function ExplorePage() {
   const current = graph?.tables.find((table) => table.name === selected) || null;
 
   return (
-    <AppShell title="Explorar datos">
+    <AppShell title={t("pageExplore")}>
       <div className="animate-fade-up space-y-4">
         <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
-          <label className="text-sm" htmlFor="schema-select">
-            Esquema
+          <label className="text-sm text-[color:var(--ink)]" htmlFor="schema-select">
+            {t("schema")}
           </label>
           <select
             id="schema-select"
-            className="min-h-11 w-full rounded-lg border bg-white px-3 py-2 text-base sm:w-auto sm:min-h-0 sm:text-sm"
+            className="theme-select min-h-11 w-full rounded-lg px-3 py-2 text-base sm:w-auto sm:min-h-0 sm:text-sm"
             value={schema}
             onChange={(event) => setSchema(event.target.value)}
           >
@@ -111,16 +115,16 @@ export default function ExplorePage() {
           </select>
           <Input
             className="min-h-11 w-full text-base sm:max-w-sm md:min-h-8 md:text-sm"
-            placeholder="Buscar tablas o columnas"
+            placeholder={t("searchTables")}
             value={search}
             onChange={(event) => setSearch(event.target.value)}
           />
         </div>
 
-        {loading ? <p className="text-sm text-[color:var(--muted-text)]">Cargando esquema…</p> : null}
+        {loading ? <p className="text-sm text-[color:var(--muted-text)]">{t("loadingSchema")}</p> : null}
         {error ? (
           <Alert variant="destructive">
-            <AlertTitle>No se pudo explorar la base</AlertTitle>
+            <AlertTitle>{t("exploreErrorTitle")}</AlertTitle>
             <AlertDescription>{error}</AlertDescription>
           </Alert>
         ) : null}
@@ -128,16 +132,16 @@ export default function ExplorePage() {
         <div className="grid min-w-0 gap-4 lg:grid-cols-[260px_minmax(0,1fr)]">
           <Card>
             <CardHeader>
-              <CardTitle>Tablas</CardTitle>
-              <CardDescription>{filtered.length} encontradas</CardDescription>
+              <CardTitle>{t("tables")}</CardTitle>
+              <CardDescription>{t("foundCount", { n: filtered.length })}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-2">
               <label className="sr-only" htmlFor="table-select">
-                Seleccionar tabla
+                {t("selectTable")}
               </label>
               <select
                 id="table-select"
-                className="min-h-11 w-full rounded-lg border bg-white px-3 py-2 text-base lg:hidden"
+                className="theme-select min-h-11 w-full rounded-lg px-3 py-2 text-base lg:hidden"
                 value={selected ?? ""}
                 onChange={(event) => setSelected(event.target.value || null)}
               >
@@ -178,7 +182,7 @@ export default function ExplorePage() {
                     {current.columns.map((column) => (
                       <div
                         key={column.name}
-                        className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-[color:var(--cream)] px-3 py-2"
+                        className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-[color:var(--border-soft)] px-3 py-2"
                       >
                         <div>
                           <p className="font-medium">{column.name}</p>
@@ -196,12 +200,12 @@ export default function ExplorePage() {
 
                 <Card>
                   <CardHeader>
-                    <CardTitle>Relaciones</CardTitle>
+                    <CardTitle>{t("relations")}</CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-2 text-sm">
                     {(graph?.relations.filter((rel) => rel.from === current.name || rel.to === current.name) || [])
                       .length === 0 ? (
-                      <p className="text-[color:var(--muted-text)]">Sin relaciones detectadas.</p>
+                      <p className="text-[color:var(--muted-text)]">{t("noRelations")}</p>
                     ) : (
                       graph?.relations
                         .filter((rel) => rel.from === current.name || rel.to === current.name)
@@ -216,8 +220,8 @@ export default function ExplorePage() {
 
                 <Card>
                   <CardHeader>
-                    <CardTitle>Vista previa (máx. 50)</CardTitle>
-                    <CardDescription>Preguntas que puedes responder con esta tabla</CardDescription>
+                    <CardTitle>{t("previewMax")}</CardTitle>
+                    <CardDescription>{t("questionsForTable")}</CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-3">
                     <ul className="list-disc space-y-1 pl-5 text-sm text-[color:var(--muted-text)]">
@@ -239,7 +243,7 @@ export default function ExplorePage() {
             ) : (
               <Card>
                 <CardContent className="py-10 text-sm text-[color:var(--muted-text)]">
-                  Selecciona una tabla para ver columnas, relaciones y una vista previa.
+                  {t("selectTablePrompt")}
                 </CardContent>
               </Card>
             )}

@@ -4,6 +4,7 @@ import CodeMirror from "@uiw/react-codemirror";
 import { sql, PostgreSQL } from "@codemirror/lang-sql";
 import { EditorView } from "@codemirror/view";
 import { placeholder as placeholderExt } from "@codemirror/view";
+import { useTheme } from "next-themes";
 import { useMemo } from "react";
 
 type Props = {
@@ -23,6 +24,9 @@ export default function CodemirrorSql({
   ariaLabel = "Editor SQL",
   placeholder = "Escribe tu consulta SQL aquí…",
 }: Props) {
+  const { resolvedTheme } = useTheme();
+  const isDark = resolvedTheme === "dark";
+
   const extensions = useMemo(
     () => [
       sql({
@@ -35,33 +39,33 @@ export default function CodemirrorSql({
       EditorView.theme({
         "&": {
           fontSize: "14px",
-          backgroundColor: "#ffffff",
-          color: "#3e2723",
+          backgroundColor: isDark ? "#1a221e" : "#ffffff",
+          color: isDark ? "#e8efe9" : "#15231c",
         },
         ".cm-content": {
           minHeight: "260px",
           padding: "12px",
-          caretColor: "#6d4c41",
+          caretColor: isDark ? "#6fbf8c" : "#2f6b4a",
         },
         ".cm-gutters": {
-          backgroundColor: "#f7f3ee",
-          color: "#6b635c",
-          borderRight: "1px solid #efe6da",
+          backgroundColor: isDark ? "#222c27" : "#e7eee9",
+          color: isDark ? "#a7b5ad" : "#4d5c54",
+          borderRight: isDark ? "1px solid #2f3b34" : "1px solid #d5ddd8",
         },
-        ".cm-activeLine": { backgroundColor: "#efe6da55" },
-        ".cm-activeLineGutter": { backgroundColor: "#efe6da" },
+        ".cm-activeLine": { backgroundColor: isDark ? "#24332a88" : "#e4f2ea88" },
+        ".cm-activeLineGutter": { backgroundColor: isDark ? "#24332a" : "#e4f2ea" },
         "&.cm-focused": { outline: "none" },
       }),
     ],
-    [schema, placeholder]
+    [schema, placeholder, isDark]
   );
 
   return (
-    <div className="overflow-hidden rounded-xl border-2 border-[color:var(--coffee-mid)] bg-white shadow-sm">
+    <div className="overflow-hidden rounded-xl border-2 border-[color:var(--accent)]/40 bg-[color:var(--surface)] shadow-sm">
       <CodeMirror
         value={value}
         height={height}
-        theme="light"
+        theme={isDark ? "dark" : "light"}
         extensions={extensions}
         onChange={onChange}
         basicSetup={{

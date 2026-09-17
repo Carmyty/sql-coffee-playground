@@ -50,6 +50,55 @@ async function runMutationCheck(exercise: Exercise): Promise<boolean> {
   return false;
 }
 
+export async function getExpectedPreview(exerciseId: string) {
+  const exercise = getExercise(exerciseId);
+  if (!exercise) {
+    return { ok: false as const, error: "Ejercicio no encontrado" };
+  }
+
+  if (exercise.environment === "sandbox" || !exercise.validation.compareSql) {
+    return {
+      ok: true as const,
+      mode: "mutation" as const,
+      description: exercise.expectedResult,
+      columns: [] as Array<{ name: string }>,
+      rows: [] as Record<string, unknown>[],
+      rowCount: 0,
+      truncated: false,
+    };
+  }
+
+  const expected = await executeSql({
+    sql: exercise.validation.compareSql,
+    mode: "read",
+    confirmMutation: true,
+    maxRows: 8,
+  });
+
+  if (!expected.ok) {
+    return {
+      ok: true as const,
+      mode: "unavailable" as const,
+      description: exercise.expectedResult,
+      columns: [] as Array<{ name: string }>,
+      rows: [] as Record<string, unknown>[],
+      rowCount: 0,
+      truncated: false,
+      error: expected.error?.message,
+    };
+  }
+
+  return {
+    ok: true as const,
+    mode: "table" as const,
+    description: exercise.expectedResult,
+    columns: expected.columns,
+    rows: expected.rows,
+    rowCount: expected.rowCount,
+    truncated: expected.truncated || expected.rowCount > expected.rows.length,
+  };
+}
+
 export async function validateExerciseAttempt(input: {
   exerciseId: string;
   sql: string;

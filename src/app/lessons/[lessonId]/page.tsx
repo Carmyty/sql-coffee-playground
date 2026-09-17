@@ -8,9 +8,11 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { useLanguage } from "@/hooks/use-language";
 
 export default function LessonDetailPage() {
   const params = useParams<{ lessonId: string }>();
+  const { locale, t } = useLanguage();
   const lesson = getLesson(params.lessonId);
   const [selected, setSelected] = useState<number | null>(null);
   if (!lesson) notFound();
@@ -23,23 +25,23 @@ export default function LessonDetailPage() {
       <div className="animate-fade-up mx-auto max-w-3xl space-y-4">
         <Card>
           <CardHeader>
-            <Badge variant="outline">{lesson.minutes} min de lectura</Badge>
+            <Badge variant="outline">{lesson.minutes} {t("min")}</Badge>
             <CardTitle className="font-[family-name:var(--font-display)] text-2xl sm:text-3xl">{lesson.title}</CardTitle>
             <CardDescription>{lesson.summary}</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4 text-sm leading-relaxed">
             <div>
-              <p className="mb-1 font-medium">Estructura</p>
-              <pre className="overflow-x-auto whitespace-pre-wrap break-words rounded-lg bg-[color:var(--coffee-dark)] p-3 text-[color:var(--cream)]">
+              <p className="mb-1 font-medium">{locale === "en" ? "Structure" : "Estructura"}</p>
+              <pre className="overflow-x-auto whitespace-pre-wrap break-words rounded-lg bg-[color:var(--ink)] p-3 text-[color:var(--page-bg)]">
                 {lesson.structure}
               </pre>
             </div>
             <div>
-              <p className="mb-1 font-medium">Ejemplo ilustrativo</p>
+              <p className="mb-1 font-medium">{locale === "en" ? "Illustrative example" : "Ejemplo ilustrativo"}</p>
               <p>{lesson.example}</p>
             </div>
             <div>
-              <p className="mb-1 font-medium">Errores comunes</p>
+              <p className="mb-1 font-medium">{locale === "en" ? "Common mistakes" : "Errores comunes"}</p>
               <ul className="list-disc space-y-1 pl-5">
                 {lesson.commonMistakes.map((item) => (
                   <li key={item}>{item}</li>
@@ -47,7 +49,7 @@ export default function LessonDetailPage() {
               </ul>
             </div>
             <div>
-              <p className="mb-1 font-medium">Cuándo usarlo</p>
+              <p className="mb-1 font-medium">{locale === "en" ? "When to use it" : "Cuándo usarlo"}</p>
               <p>{lesson.whenToUse}</p>
             </div>
           </CardContent>
@@ -55,7 +57,7 @@ export default function LessonDetailPage() {
 
         <Card>
           <CardHeader>
-            <CardTitle>Autoevaluación</CardTitle>
+            <CardTitle>{t("selfCheck")}</CardTitle>
             <CardDescription>{lesson.quiz.question}</CardDescription>
           </CardHeader>
           <CardContent className="space-y-2">
@@ -71,7 +73,15 @@ export default function LessonDetailPage() {
             ))}
             {answered ? (
               <Alert>
-                <AlertTitle>{correct ? "Correcto" : "Casi"}</AlertTitle>
+                <AlertTitle>
+                  {correct
+                    ? locale === "en"
+                      ? "Correct"
+                      : "Correcto"
+                    : locale === "en"
+                      ? "Almost"
+                      : "Casi"}
+                </AlertTitle>
                 <AlertDescription>{lesson.quiz.explanation}</AlertDescription>
               </Alert>
             ) : null}

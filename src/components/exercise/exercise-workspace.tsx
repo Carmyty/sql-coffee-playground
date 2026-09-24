@@ -25,7 +25,7 @@ import { localizeModule } from "@/lib/i18n/modules-en";
 import { CompletionBanner } from "@/components/exercise/completion-banner";
 import { QueryResultsPanel } from "@/components/exercise/query-results-panel";
 import { ReferenceTables } from "@/components/exercise/reference-tables";
-import { TasksSidebar, type TaskItem } from "@/components/exercise/tasks-sidebar";
+import { TasksNavbar, type TaskItem } from "@/components/exercise/tasks-navbar";
 import { SqlEditor } from "@/components/editor/sql-editor";
 import { useProgress } from "@/hooks/use-progress";
 import { useLanguage } from "@/hooks/use-language";
@@ -34,6 +34,8 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { cn } from "@/lib/utils";
 import { isLikelySelect } from "@/lib/tsql/translate";
+
+const TASK_WINDOW = 4;
 
 type SchemaPayload = {
   ok: boolean;
@@ -73,10 +75,29 @@ type ValidateResponse = {
 
 export function ExerciseWorkspace({ exercise }: { exercise: Exercise }) {
   const { locale, t } = useLanguage();
-  const localized = useMemo(() => localizeExercise(exercise, locale), [exercise, locale]);
   const { getExercise, recordVisit, recordAttempt, unlockSolution, setHintsUsed } = useProgress();
-  const progress = getExercise(exercise.id);
-  const [sql, setSql] = useState(progress.lastSql || exercise.starterSql);
+
+  const taskChain = useMemo(() => {
+    const moduleExercises = getModuleExercises(exercise.moduleId);
+    const start = moduleExercises.findIndex((item) => item.id === exercise.id);
+    const from = start >= 0 ? start : 0;
+    return moduleExercises.slice(from, from + TASK_WINDOW);
+  }, [exercise.id, exercise.moduleId]);
+
+  const [activeTaskId, setActiveTaskId] = useState(exercise.id);
+  const [completedIds, setCompletedIds] = useState<Set<string>>(() => new Set());
+
+  const activeExercise = useMemo(
+    () => taskChain.find((item) => item.id === activeTaskId) || exercise,
+    [taskChain, activeTaskId, exercise]
+  );
+  const localized = useMemo(
+    () => localizeExercise(activeExercise, locale),
+    [activeExercise, locale]
+  );
+  const progress = getExercise(activeExercise.id);
+
+  const [sql, setSql] = useState(progress.lastSql || activeExercise.starterSql);
   const [hintLevel, setHintLevel] = useState(progress.hintsUsed);
   const [schemaMap, setSchemaMap] = useState<Record<string, string[]>>({});
   const [busy, setBusy] = useState(false);
@@ -90,57 +111,78 @@ export function ExerciseWorkspace({ exercise }: { exercise: Exercise }) {
   const [liveResult, setLiveResult] = useState<ExecuteResponse | null>(null);
   const [liveBusy, setLiveBusy] = useState(false);
   const [liveError, setLiveError] = useState<string | null>(null);
-  const lastRecordedSql = useRef<string>("");
-  const alreadyCelebrated = useRef(false);
+  const lastRecordedKey = useRef<string>("");
+  const celebratedIds = useRef<Set<string>>(new Set());
 
   const previous = getPreviousExercise(exercise.id);
-  const next = getNextExercise(exercise.id);
+  const afterChain = getNextExercise(taskChain[taskChain.length - 1]?.id || exercise.id);
   const previousLocalized = previous ? localizeExercise(previous, locale) : undefined;
-  const nextLocalized = next ? localizeExercise(next, locale) : undefined;
   const learningModule = LEARNING_MODULES.find((module) => module.id === exercise.moduleId);
   const moduleTitle = learningModule
     ? localizeModule(learningModule, locale).title
     : t("pageLearn");
-  const moduleExercises = useMemo(
-    () => getModuleExercises(exercise.moduleId),
-    [exercise.moduleId]
-  );
+
   const envLabel =
-    exercise.environment === "read"
+    activeExercise.environment === "read"
       ? `${t("envRead")} · T-SQL`
       : `${t("envSandbox")} · T-SQL`;
   const solutionReady =
     progress.solutionUnlocked ||
-    progress.attempts >= exercise.unlockAfterAttempts ||
+    progress.attempts >= activeExercise.unlockAfterAttempts ||
     Boolean(reference);
-  const isCorrect = validation?.status === "correct" || progress.status === "correct";
-  const isRead = exercise.environment === "read";
+  const isCorrect =
+    validation?.status === "correct" ||
+    completedIds.has(activeExercise.id) ||
+    progress.status === "correct";
+  const isRead = activeExercise.environment === "read";
+  const allTasksDone = taskChain.every(
+    (item) => completedIds.has(item.id) || getExercise(item.id).status === "correct"
+  );
   const difficultyLabel =
-    exercise.difficulty === "basico"
+    activeExercise.difficulty === "basico"
       ? t("difficultyBasico")
-      : exercise.difficulty === "intermedio"
+      : activeExercise.difficulty === "intermedio"
         ? t("difficultyIntermedio")
         : t("difficultyAvanzado");
 
   const tasks: TaskItem[] = useMemo(() => {
-    const index = moduleExercises.findIndex((item) => item.id === exercise.id);
-    const upcoming = moduleExercises.slice(index + 1, index + 4);
-    const current: TaskItem = {
-      id: exercise.id,
-      label: localized.objective,
-      state: isCorrect ? "done" : "active",
-    };
-    const locked: TaskItem[] = upcoming.map((item) => ({
-      id: item.id,
-      label: localizeExercise(item, locale).title,
-      state: "locked" as const,
-      href: `/learn/${item.moduleId}/${item.id}`,
-    }));
-    return [current, ...locked];
-  }, [moduleExercises, exercise.id, localized.objective, isCorrect, locale]);
+    const firstOpenIndex = taskChain.findIndex(
+      (item) => !(completedIds.has(item.id) || getExercise(item.id).status === "correct")
+    );
+    const activeIndex = taskChain.findIndex((item) => item.id === activeTaskId);
+    return taskChain.map((item, index) => {
+      const done = completedIds.has(item.id) || getExercise(item.id).status === "correct";
+      const localizedItem = localizeExercise(item, locale);
+      if (done) {
+        return { id: item.id, label: localizedItem.objective, state: "done" as const };
+      }
+      if (item.id === activeTaskId) {
+        return { id: item.id, label: localizedItem.objective, state: "active" as const };
+      }
+      const gate = activeIndex >= 0 ? activeIndex : firstOpenIndex;
+      if (gate >= 0 && index > gate) {
+        return { id: item.id, label: localizedItem.title, state: "locked" as const };
+      }
+      return { id: item.id, label: localizedItem.objective, state: "locked" as const };
+    });
+  }, [taskChain, completedIds, activeTaskId, locale, getExercise]);
 
   useEffect(() => {
-    recordVisit(exercise.id, sql);
+    const seed = new Set<string>();
+    for (const item of taskChain) {
+      if (getExercise(item.id).status === "correct") seed.add(item.id);
+    }
+    setCompletedIds(seed);
+    const firstOpen = taskChain.find((item) => !seed.has(item.id));
+    setActiveTaskId(firstOpen?.id || exercise.id);
+    celebratedIds.current = new Set(seed);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [exercise.id]);
+
+  useEffect(() => {
+    const p = getExercise(activeExercise.id);
+    setSql(p.lastSql || activeExercise.starterSql);
+    setHintLevel(p.hintsUsed);
     setShowCompletion(false);
     setValidation(undefined);
     setResult(null);
@@ -150,10 +192,10 @@ export function ExerciseWorkspace({ exercise }: { exercise: Exercise }) {
     setLiveResult(null);
     setLiveError(null);
     setShowHintsPanel(false);
-    lastRecordedSql.current = "";
-    alreadyCelebrated.current = progress.status === "correct";
+    lastRecordedKey.current = "";
+    recordVisit(activeExercise.id, p.lastSql || activeExercise.starterSql);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [exercise.id]);
+  }, [activeExercise.id]);
 
   useEffect(() => {
     fetch("/api/schema")
@@ -169,7 +211,6 @@ export function ExerciseWorkspace({ exercise }: { exercise: Exercise }) {
       .catch(() => undefined);
   }, []);
 
-  // SQLBolt: live execute + auto-validate on every pause while typing (read-only).
   useEffect(() => {
     if (!isRead) return;
     const trimmed = sql.trim();
@@ -177,7 +218,6 @@ export function ExerciseWorkspace({ exercise }: { exercise: Exercise }) {
       setLiveResult(null);
       setLiveError(null);
       setLiveBusy(false);
-      if (validation && validation.status !== "correct") setValidation(undefined);
       return;
     }
 
@@ -189,7 +229,7 @@ export function ExerciseWorkspace({ exercise }: { exercise: Exercise }) {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            exerciseId: exercise.id,
+            exerciseId: activeExercise.id,
             sql: trimmed,
             confirmMutation: false,
             unlockSolution: progress.solutionUnlocked,
@@ -227,11 +267,11 @@ export function ExerciseWorkspace({ exercise }: { exercise: Exercise }) {
                 ? "error"
                 : "incorrect";
 
-        // Record each distinct paused query once (not every keystroke).
-        if (trimmed !== lastRecordedSql.current) {
-          lastRecordedSql.current = trimmed;
+        const recordKey = `${activeExercise.id}::${trimmed}`;
+        if (recordKey !== lastRecordedKey.current) {
+          lastRecordedKey.current = recordKey;
           recordAttempt({
-            exerciseId: exercise.id,
+            exerciseId: activeExercise.id,
             sql: trimmed,
             status,
             hintsUsed: hintLevel,
@@ -239,15 +279,28 @@ export function ExerciseWorkspace({ exercise }: { exercise: Exercise }) {
           });
         }
 
-        if (status === "correct" && !alreadyCelebrated.current) {
-          alreadyCelebrated.current = true;
-          setShowCompletion(true);
+        if (status === "correct") {
+          const solvedId = activeExercise.id;
+          const idx = taskChain.findIndex((item) => item.id === solvedId);
+          setCompletedIds((prev) => {
+            const next = new Set(prev);
+            next.add(solvedId);
+            const following = taskChain
+              .slice(idx + 1)
+              .find((item) => !next.has(item.id) && getExercise(item.id).status !== "correct");
+            if (following) {
+              window.setTimeout(() => setActiveTaskId(following.id), 650);
+            }
+            return next;
+          });
+          if (!celebratedIds.current.has(solvedId)) {
+            celebratedIds.current.add(solvedId);
+            setShowCompletion(true);
+          }
         }
       } catch {
         if (!cancelled) {
-          setLiveError(
-            locale === "en" ? "Could not run live preview." : "No se pudo previsualizar."
-          );
+          setLiveError(locale === "en" ? "Could not run query." : "No se pudo ejecutar la consulta.");
         }
       } finally {
         if (!cancelled) setLiveBusy(false);
@@ -258,18 +311,8 @@ export function ExerciseWorkspace({ exercise }: { exercise: Exercise }) {
       cancelled = true;
       window.clearTimeout(timer);
     };
-    // validation intentionally omitted to avoid re-entry loops
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [
-    sql,
-    isRead,
-    exercise.id,
-    locale,
-    hintLevel,
-    progress.solutionUnlocked,
-    recordAttempt,
-    t,
-  ]);
+  }, [sql, isRead, activeExercise.id, locale, hintLevel, progress.solutionUnlocked, recordAttempt, t]);
 
   async function runQuery(confirmMutation = false) {
     setBusy(true);
@@ -279,7 +322,7 @@ export function ExerciseWorkspace({ exercise }: { exercise: Exercise }) {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          exerciseId: exercise.id,
+          exerciseId: activeExercise.id,
           sql,
           confirmMutation,
           unlockSolution: progress.solutionUnlocked,
@@ -289,8 +332,8 @@ export function ExerciseWorkspace({ exercise }: { exercise: Exercise }) {
       if (!data.ok) {
         setResult({
           ok: false,
-          environment: exercise.environment,
-          schema: exercise.environment === "read" ? "coffee_chain" : "sql_playground",
+          environment: activeExercise.environment,
+          schema: activeExercise.environment === "read" ? "coffee_chain" : "sql_playground",
           rows: [],
           columns: [],
           rowCount: 0,
@@ -325,9 +368,9 @@ export function ExerciseWorkspace({ exercise }: { exercise: Exercise }) {
               ? "error"
               : "incorrect";
 
-      lastRecordedSql.current = sql.trim();
+      lastRecordedKey.current = `${activeExercise.id}::${sql.trim()}`;
       recordAttempt({
-        exerciseId: exercise.id,
+        exerciseId: activeExercise.id,
         sql,
         status,
         hintsUsed: hintLevel,
@@ -335,7 +378,8 @@ export function ExerciseWorkspace({ exercise }: { exercise: Exercise }) {
       });
 
       if (status === "correct") {
-        alreadyCelebrated.current = true;
+        setCompletedIds((prev) => new Set(prev).add(activeExercise.id));
+        celebratedIds.current.add(activeExercise.id);
         setShowCompletion(true);
       }
     } finally {
@@ -372,7 +416,7 @@ export function ExerciseWorkspace({ exercise }: { exercise: Exercise }) {
   function revealHint() {
     const nextLevel = Math.min(3, hintLevel + 1);
     setHintLevel(nextLevel);
-    setHintsUsed(exercise.id, nextLevel);
+    setHintsUsed(activeExercise.id, nextLevel);
     setShowHintsPanel(true);
   }
 
@@ -385,19 +429,25 @@ export function ExerciseWorkspace({ exercise }: { exercise: Exercise }) {
   }
 
   function requestSolution() {
-    unlockSolution(exercise.id);
+    unlockSolution(activeExercise.id);
     setReference({
-      sql: exercise.referenceSql,
+      sql: activeExercise.referenceSql,
       explanation: localized.referenceExplanation,
     });
     setShowHintsPanel(true);
   }
 
   function resetEditor() {
-    setSql(exercise.starterSql);
+    setSql(activeExercise.starterSql);
     setLiveResult(null);
     setLiveError(null);
     if (!isCorrect) setValidation(undefined);
+  }
+
+  function selectTask(taskId: string) {
+    const task = tasks.find((item) => item.id === taskId);
+    if (!task || task.state === "locked") return;
+    setActiveTaskId(taskId);
   }
 
   const displayResult =
@@ -407,8 +457,12 @@ export function ExerciseWorkspace({ exercise }: { exercise: Exercise }) {
         ? result
         : null;
 
+  const finishHref = afterChain
+    ? `/learn/${afterChain.moduleId}/${afterChain.id}`
+    : undefined;
+
   return (
-    <div className="mx-auto flex min-w-0 max-w-6xl flex-col gap-4">
+    <div className="mx-auto flex min-w-0 max-w-6xl flex-col gap-3">
       <div className="flex justify-start">
         <Link
           href={`/learn/${exercise.moduleId}`}
@@ -459,15 +513,14 @@ export function ExerciseWorkspace({ exercise }: { exercise: Exercise }) {
           </h2>
         </div>
 
-        {next ? (
+        {afterChain ? (
           <Link
-            href={`/learn/${next.moduleId}/${next.id}`}
+            href={`/learn/${afterChain.moduleId}/${afterChain.id}`}
             className={cn(
               buttonVariants({ variant: "outline", size: "icon" }),
               "pressable size-11 shrink-0 rounded-full border-[color:var(--border-soft)] bg-[color:var(--surface)]"
             )}
-            aria-label={`${t("nextExercise")}: ${nextLocalized?.title}`}
-            title={nextLocalized?.title}
+            aria-label={t("nextExercise")}
           >
             <ChevronRight className="size-5" />
           </Link>
@@ -476,225 +529,201 @@ export function ExerciseWorkspace({ exercise }: { exercise: Exercise }) {
         )}
       </div>
 
-      {isRead && exercise.suggestedTables.length > 0 ? (
-        <ReferenceTables tables={exercise.suggestedTables} />
+      <TasksNavbar
+        exerciseOrder={exercise.order}
+        tasks={tasks}
+        expectedDescription={localized.expectedResult}
+        onSelectTask={selectTask}
+        showSolutionLink={!solutionReady}
+        onShowSolution={requestSolution}
+        finishEnabled={allTasksDone && Boolean(finishHref)}
+        finishHref={finishHref}
+        onAskHint={revealHint}
+        hintLevel={hintLevel}
+      />
+
+      {isRead && activeExercise.suggestedTables.length > 0 ? (
+        <ReferenceTables tables={activeExercise.suggestedTables} />
       ) : null}
 
-      <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(16rem,20rem)]">
-        <div className="flex min-w-0 flex-col gap-3">
-          <QueryResultsPanel
-            live={
-              displayResult
-                ? {
-                    columns: displayResult.columns,
-                    rows: displayResult.rows,
-                    rowCount: displayResult.rowCount,
-                    executionMs: displayResult.executionMs,
-                  }
-                : null
-            }
-            liveError={liveError || result?.error?.beginnerHint || null}
-            liveBusy={liveBusy}
-            matched={validation?.status === "correct"}
-          />
+      <QueryResultsPanel
+        live={
+          displayResult
+            ? {
+                columns: displayResult.columns,
+                rows: displayResult.rows,
+                rowCount: displayResult.rowCount,
+                executionMs: displayResult.executionMs,
+              }
+            : null
+        }
+        liveError={liveError || result?.error?.beginnerHint || null}
+        liveBusy={liveBusy}
+        matched={validation?.status === "correct"}
+      />
 
-          <section className="relative space-y-2 rounded-xl border border-[color:var(--border-soft)] bg-[color:var(--surface)] p-3 sm:p-4">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <p className="text-sm font-medium text-[color:var(--ink)]">{t("yourSql")}</p>
-              <div className="flex flex-wrap gap-1.5">
-                <Button variant="ghost" size="sm" className="pressable h-8 px-2 text-xs" onClick={formatSql}>
-                  {t("format")}
-                </Button>
-                {!isRead ? (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="pressable h-8 px-2 text-xs"
-                    onClick={resetSandbox}
-                    disabled={busy}
-                  >
-                    <RotateCcw className="size-3.5" />
-                    {t("resetSandbox")}
-                  </Button>
-                ) : null}
-              </div>
-            </div>
-
-            <SqlEditor value={sql} onChange={setSql} schema={schemaMap} height="220px" label="" />
-
-            <div className="flex items-center justify-between gap-2">
-              <p className="text-xs text-[color:var(--muted-text)]">
-                {isRead
-                  ? locale === "en"
-                    ? "No Run button — results update as you type."
-                    : "Sin botón Ejecutar: el resultado se actualiza al escribir."
-                  : null}
-              </p>
-              <button
-                type="button"
-                onClick={resetEditor}
-                className="inline-flex items-center gap-1 text-xs font-semibold uppercase tracking-wide text-[color:var(--muted-text)] hover:text-[color:var(--ink)]"
-              >
-                <Eraser className="size-3.5" />
-                {locale === "en" ? "Reset" : "Reset"}
-              </button>
-            </div>
-
+      <section className="flex h-[260px] flex-col rounded-xl border border-[color:var(--border-soft)] bg-[color:var(--surface)] p-3 sm:h-[280px] sm:p-4">
+        <div className="mb-2 flex shrink-0 flex-wrap items-center justify-between gap-2">
+          <p className="text-sm font-medium text-[color:var(--ink)]">{t("yourSql")}</p>
+          <div className="flex flex-wrap items-center gap-1.5">
+            <Button variant="ghost" size="sm" className="pressable h-8 px-2 text-xs" onClick={formatSql}>
+              {t("format")}
+            </Button>
+            <button
+              type="button"
+              onClick={resetEditor}
+              className="inline-flex h-8 items-center gap-1 px-2 text-xs font-semibold uppercase tracking-wide text-[color:var(--muted-text)] hover:text-[color:var(--ink)]"
+            >
+              <Eraser className="size-3.5" />
+              Reset
+            </button>
             {!isRead ? (
-              <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
-                <Button
-                  className="pressable max-sm:min-h-12 max-sm:w-full bg-[color:var(--accent)] text-[color:var(--primary-foreground)] hover:bg-[color:var(--accent)]/90"
-                  size="lg"
-                  onClick={() => runQuery(false)}
-                  disabled={busy}
-                >
-                  <Play className="size-4" />
-                  {busy ? t("running") : t("checkQuery")}
-                </Button>
-                {pendingConfirm ? (
-                  <Button
-                    variant="destructive"
-                    className="pressable max-sm:w-full"
-                    onClick={() => runQuery(true)}
-                    disabled={busy}
-                  >
-                    <AlertTriangle className="size-4" />
-                    {t("confirmMutation")}
-                  </Button>
-                ) : null}
-                <Button
-                  variant="secondary"
-                  className="pressable max-sm:w-full"
-                  onClick={explainQuery}
-                  disabled={!sql.trim()}
-                >
-                  <Sparkles className="size-4" />
-                  {t("explainQuery")}
-                </Button>
-              </div>
-            ) : (
-              <div className="flex justify-end">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="pressable text-[color:var(--muted-text)]"
-                  onClick={explainQuery}
-                  disabled={!sql.trim()}
-                >
-                  <Sparkles className="size-3.5" />
-                  {t("explainQuery")}
-                </Button>
-              </div>
-            )}
-          </section>
-
-          {validation && validation.status !== "correct" ? (
-            <Alert className="animate-pop-in border-[color:var(--border-soft)] bg-[color:var(--surface)]">
-              <AlertTitle className="text-[color:var(--ink)]">{validation.message}</AlertTitle>
-              <AlertDescription>{validation.explanation}</AlertDescription>
-            </Alert>
-          ) : null}
-
-          {validation?.status === "correct" ? (
-            <Alert className="animate-pop-in border-[color:var(--success)]/40 bg-[color:var(--success-soft)]">
-              <CheckCircle2 className="check-burst size-4 text-[color:var(--success)]" />
-              <AlertTitle className="text-[color:var(--ink)]">{validation.message}</AlertTitle>
-              <AlertDescription>{validation.explanation}</AlertDescription>
-            </Alert>
-          ) : null}
-
-          {explainText ? (
-            <Alert className="bg-[color:var(--surface)]">
-              <AlertTitle>{t("explanation")}</AlertTitle>
-              <AlertDescription className="whitespace-pre-wrap">{explainText}</AlertDescription>
-            </Alert>
-          ) : null}
-
-          {result?.warning ? (
-            <Alert className="bg-[color:var(--surface)]">
-              <AlertTriangle className="size-4" />
-              <AlertTitle>{t("impactWarning")}</AlertTitle>
-              <AlertDescription>
-                {result.warning.message}
-                {result.warning.estimatedRows !== undefined
-                  ? ` ${t("estimatedRows")}: ${result.warning.estimatedRows}.`
-                  : ""}
-              </AlertDescription>
-            </Alert>
-          ) : null}
-
-          {showHintsPanel || hintLevel > 0 || solutionReady ? (
-            <section className="space-y-3 rounded-xl border border-[color:var(--border-soft)] bg-[color:var(--surface)] p-4">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <p className="font-medium text-[color:var(--ink)]">{t("help")}</p>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="pressable"
-                  onClick={revealHint}
-                  disabled={hintLevel >= 3}
-                >
-                  <Lightbulb className="size-4" />
-                  {t("askHint")} {hintLevel}/3
-                </Button>
-              </div>
-              {hintLevel >= 1 ? (
-                <Alert>
-                  <AlertTitle>
-                    {t("hint")} 1
-                  </AlertTitle>
-                  <AlertDescription>{localized.hints[0]}</AlertDescription>
-                </Alert>
-              ) : null}
-              {hintLevel >= 2 ? (
-                <Alert>
-                  <AlertTitle>
-                    {t("hint")} 2
-                  </AlertTitle>
-                  <AlertDescription className="font-mono text-xs">{localized.hints[1]}</AlertDescription>
-                </Alert>
-              ) : null}
-              {hintLevel >= 3 ? (
-                <Alert>
-                  <AlertTitle>
-                    {t("hint")} 3
-                  </AlertTitle>
-                  <AlertDescription>{localized.hints[2]}</AlertDescription>
-                </Alert>
-              ) : null}
-
-              {solutionReady ? (
-                <div className="animate-fade-up space-y-3 border-t border-[color:var(--border-soft)] pt-3">
-                  <p className="font-medium text-[color:var(--ink)]">{t("referenceSolution")}</p>
-                  <pre className="overflow-x-auto whitespace-pre-wrap break-words rounded-xl bg-[color:var(--ink)] p-3 text-xs text-[color:var(--page-bg)]">
-                    {(reference?.sql || exercise.referenceSql).trim()}
-                  </pre>
-                  <ul className="space-y-2">
-                    {(reference?.explanation || localized.referenceExplanation).map((item) => (
-                      <li key={item.clause} className="rounded-xl bg-[color:var(--cream)] p-3">
-                        <p className="font-medium text-[color:var(--ink)]">{item.clause}</p>
-                        <p className="text-sm text-[color:var(--muted-text)]">{item.text}</p>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              ) : null}
-            </section>
-          ) : null}
+              <Button
+                variant="ghost"
+                size="sm"
+                className="pressable h-8 px-2 text-xs"
+                onClick={resetSandbox}
+                disabled={busy}
+              >
+                <RotateCcw className="size-3.5" />
+                {t("resetSandbox")}
+              </Button>
+            ) : null}
+          </div>
         </div>
 
-        <TasksSidebar
-          exerciseOrder={exercise.order}
-          tasks={tasks}
-          expectedDescription={localized.expectedResult}
-          showSolutionLink={!solutionReady}
-          onShowSolution={requestSolution}
-          finishEnabled={isCorrect && Boolean(next)}
-          finishHref={next ? `/learn/${next.moduleId}/${next.id}` : undefined}
-          onAskHint={revealHint}
-          hintLevel={hintLevel}
-        />
-      </div>
+        <div className="min-h-0 flex-1 overflow-hidden [&_textarea]:!min-h-0 [&_textarea]:!h-full">
+          <SqlEditor value={sql} onChange={setSql} schema={schemaMap} height="200px" label="" />
+        </div>
+
+        {!isRead ? (
+          <div className="mt-2 flex shrink-0 flex-col gap-2 sm:flex-row sm:flex-wrap">
+            <Button
+              className="pressable max-sm:min-h-12 max-sm:w-full bg-[color:var(--accent)] text-[color:var(--primary-foreground)] hover:bg-[color:var(--accent)]/90"
+              size="lg"
+              onClick={() => runQuery(false)}
+              disabled={busy}
+            >
+              <Play className="size-4" />
+              {busy ? t("running") : t("checkQuery")}
+            </Button>
+            {pendingConfirm ? (
+              <Button
+                variant="destructive"
+                className="pressable max-sm:w-full"
+                onClick={() => runQuery(true)}
+                disabled={busy}
+              >
+                <AlertTriangle className="size-4" />
+                {t("confirmMutation")}
+              </Button>
+            ) : null}
+            <Button
+              variant="secondary"
+              className="pressable max-sm:w-full"
+              onClick={explainQuery}
+              disabled={!sql.trim()}
+            >
+              <Sparkles className="size-4" />
+              {t("explainQuery")}
+            </Button>
+          </div>
+        ) : null}
+      </section>
+
+      {validation && validation.status !== "correct" ? (
+        <Alert className="animate-pop-in border-[color:var(--border-soft)] bg-[color:var(--surface)]">
+          <AlertTitle className="text-[color:var(--ink)]">{validation.message}</AlertTitle>
+          <AlertDescription>{validation.explanation}</AlertDescription>
+        </Alert>
+      ) : null}
+
+      {validation?.status === "correct" ? (
+        <Alert className="animate-pop-in border-[color:var(--success)]/40 bg-[color:var(--success-soft)]">
+          <CheckCircle2 className="check-burst size-4 text-[color:var(--success)]" />
+          <AlertTitle className="text-[color:var(--ink)]">{validation.message}</AlertTitle>
+          <AlertDescription>{validation.explanation}</AlertDescription>
+        </Alert>
+      ) : null}
+
+      {explainText ? (
+        <Alert className="bg-[color:var(--surface)]">
+          <AlertTitle>{t("explanation")}</AlertTitle>
+          <AlertDescription className="whitespace-pre-wrap">{explainText}</AlertDescription>
+        </Alert>
+      ) : null}
+
+      {result?.warning ? (
+        <Alert className="bg-[color:var(--surface)]">
+          <AlertTriangle className="size-4" />
+          <AlertTitle>{t("impactWarning")}</AlertTitle>
+          <AlertDescription>
+            {result.warning.message}
+            {result.warning.estimatedRows !== undefined
+              ? ` ${t("estimatedRows")}: ${result.warning.estimatedRows}.`
+              : ""}
+          </AlertDescription>
+        </Alert>
+      ) : null}
+
+      {showHintsPanel || hintLevel > 0 || solutionReady ? (
+        <section className="space-y-3 rounded-xl border border-[color:var(--border-soft)] bg-[color:var(--surface)] p-4">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p className="font-medium text-[color:var(--ink)]">{t("help")}</p>
+            <Button
+              variant="outline"
+              size="sm"
+              className="pressable"
+              onClick={revealHint}
+              disabled={hintLevel >= 3}
+            >
+              <Lightbulb className="size-4" />
+              {t("askHint")} {hintLevel}/3
+            </Button>
+          </div>
+          {hintLevel >= 1 ? (
+            <Alert>
+              <AlertTitle>
+                {t("hint")} 1
+              </AlertTitle>
+              <AlertDescription>{localized.hints[0]}</AlertDescription>
+            </Alert>
+          ) : null}
+          {hintLevel >= 2 ? (
+            <Alert>
+              <AlertTitle>
+                {t("hint")} 2
+              </AlertTitle>
+              <AlertDescription className="font-mono text-xs">{localized.hints[1]}</AlertDescription>
+            </Alert>
+          ) : null}
+          {hintLevel >= 3 ? (
+            <Alert>
+              <AlertTitle>
+                {t("hint")} 3
+              </AlertTitle>
+              <AlertDescription>{localized.hints[2]}</AlertDescription>
+            </Alert>
+          ) : null}
+
+          {solutionReady ? (
+            <div className="animate-fade-up space-y-3 border-t border-[color:var(--border-soft)] pt-3">
+              <p className="font-medium text-[color:var(--ink)]">{t("referenceSolution")}</p>
+              <pre className="overflow-x-auto whitespace-pre-wrap break-words rounded-xl bg-[color:var(--ink)] p-3 text-xs text-[color:var(--page-bg)]">
+                {(reference?.sql || activeExercise.referenceSql).trim()}
+              </pre>
+              <ul className="space-y-2">
+                {(reference?.explanation || localized.referenceExplanation).map((item) => (
+                  <li key={item.clause} className="rounded-xl bg-[color:var(--cream)] p-3">
+                    <p className="font-medium text-[color:var(--ink)]">{item.clause}</p>
+                    <p className="text-sm text-[color:var(--muted-text)]">{item.text}</p>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
+        </section>
+      ) : null}
 
       <div className="flex items-center justify-between gap-3 pb-4">
         {previous ? (
@@ -708,9 +737,9 @@ export function ExerciseWorkspace({ exercise }: { exercise: Exercise }) {
         ) : (
           <span />
         )}
-        {next ? (
+        {afterChain ? (
           <Link
-            href={`/learn/${next.moduleId}/${next.id}`}
+            href={`/learn/${afterChain.moduleId}/${afterChain.id}`}
             className="inline-flex min-h-11 items-center gap-1.5 text-sm font-medium text-[color:var(--accent)] hover:underline"
           >
             {t("next")}
@@ -724,8 +753,24 @@ export function ExerciseWorkspace({ exercise }: { exercise: Exercise }) {
       {showCompletion && isCorrect ? (
         <CompletionBanner
           exerciseTitle={localized.title}
-          next={next}
-          onDismiss={() => setShowCompletion(false)}
+          next={
+            allTasksDone
+              ? afterChain
+              : taskChain.find(
+                  (item) =>
+                    item.id !== activeExercise.id &&
+                    !(completedIds.has(item.id) || getExercise(item.id).status === "correct")
+                )
+          }
+          onDismiss={() => {
+            setShowCompletion(false);
+            const nextOpen = taskChain.find(
+              (item) =>
+                item.id !== activeExercise.id &&
+                !(completedIds.has(item.id) || getExercise(item.id).status === "correct")
+            );
+            if (nextOpen) setActiveTaskId(nextOpen.id);
+          }}
         />
       ) : null}
     </div>

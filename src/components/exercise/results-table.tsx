@@ -16,15 +16,17 @@ type ResultsTableProps = {
   columns: Array<{ name: string }>;
   rows: Record<string, unknown>[];
   pageSize?: number;
+  compact?: boolean;
 };
 
-export function ResultsTable({ columns, rows, pageSize = 10 }: ResultsTableProps) {
+export function ResultsTable({ columns, rows, pageSize = 10, compact = false }: ResultsTableProps) {
   const { t } = useLanguage();
   const [page, setPage] = useState(0);
-  const totalPages = Math.max(1, Math.ceil(rows.length / pageSize));
+  const effectivePageSize = compact ? Math.max(rows.length, 1) : pageSize;
+  const totalPages = Math.max(1, Math.ceil(rows.length / effectivePageSize));
   const pageRows = useMemo(
-    () => rows.slice(page * pageSize, page * pageSize + pageSize),
-    [rows, page, pageSize]
+    () => rows.slice(page * effectivePageSize, page * effectivePageSize + effectivePageSize),
+    [rows, page, effectivePageSize]
   );
 
   if (columns.length === 0) {
@@ -36,13 +38,19 @@ export function ResultsTable({ columns, rows, pageSize = 10 }: ResultsTableProps
   }
 
   return (
-    <div className="space-y-3">
-      <div className="max-w-full overflow-x-auto overscroll-x-contain rounded-xl border border-[color:var(--border-soft)] bg-[color:var(--surface)] [-webkit-overflow-scrolling:touch]">
+    <div className={compact ? "space-y-0" : "space-y-3"}>
+      <div
+        className={
+          compact
+            ? "max-w-full overflow-x-auto overscroll-x-contain [-webkit-overflow-scrolling:touch]"
+            : "max-w-full overflow-x-auto overscroll-x-contain rounded-xl border border-[color:var(--border-soft)] bg-[color:var(--surface)] [-webkit-overflow-scrolling:touch]"
+        }
+      >
         <Table>
           <TableHeader>
             <TableRow>
               {columns.map((column) => (
-                <TableHead key={column.name} className="whitespace-nowrap">
+                <TableHead key={column.name} className="sticky top-0 z-10 whitespace-nowrap bg-[color:var(--surface)]">
                   {column.name}
                 </TableHead>
               ))}
@@ -69,25 +77,27 @@ export function ResultsTable({ columns, rows, pageSize = 10 }: ResultsTableProps
           </TableBody>
         </Table>
       </div>
-      <div className="flex flex-col gap-2 text-xs text-[color:var(--muted-text)] sm:flex-row sm:items-center sm:justify-between">
-        <span>
-          {rows.length} {rows.length === 1 ? t("rowSingular") : t("rows")} ·{" "}
-          {t("pageOf", { page: page + 1, total: totalPages })}
-        </span>
-        <div className="flex gap-2">
-          <Button variant="outline" size="sm" disabled={page === 0} onClick={() => setPage((p) => p - 1)}>
-            {t("previous")}
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={page >= totalPages - 1}
-            onClick={() => setPage((p) => p + 1)}
-          >
-            {t("next")}
-          </Button>
+      {!compact ? (
+        <div className="flex flex-col gap-2 text-xs text-[color:var(--muted-text)] sm:flex-row sm:items-center sm:justify-between">
+          <span>
+            {rows.length} {rows.length === 1 ? t("rowSingular") : t("rows")} ·{" "}
+            {t("pageOf", { page: page + 1, total: totalPages })}
+          </span>
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" disabled={page === 0} onClick={() => setPage((p) => p - 1)}>
+              {t("previous")}
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={page >= totalPages - 1}
+              onClick={() => setPage((p) => p + 1)}
+            >
+              {t("next")}
+            </Button>
+          </div>
         </div>
-      </div>
+      ) : null}
     </div>
   );
 }

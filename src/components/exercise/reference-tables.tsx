@@ -36,7 +36,7 @@ export function ReferenceTables({ tables }: ReferenceTablesProps) {
             table,
             {
               columns,
-              rows: (data.rows || []).slice(0, 6),
+              rows: (data.rows || []).slice(0, 8),
             },
           ] as const;
         } catch {
@@ -58,7 +58,11 @@ export function ReferenceTables({ tables }: ReferenceTablesProps) {
   }, [tables]);
 
   const names = Object.keys(previews);
-  if (names.length === 0) return null;
+  if (names.length === 0) {
+    return (
+      <div className="h-[160px] rounded-xl border border-dashed border-[color:var(--border-soft)] bg-[color:var(--surface)]" />
+    );
+  }
 
   return (
     <div className={names.length > 1 ? "grid gap-3 md:grid-cols-2" : "grid gap-3"}>
@@ -67,15 +71,14 @@ export function ReferenceTables({ tables }: ReferenceTablesProps) {
         return (
           <section
             key={table}
-            className="space-y-2 rounded-xl border border-[color:var(--border-soft)] bg-[color:var(--surface)] p-3"
+            className="flex h-[160px] flex-col rounded-xl border border-[color:var(--border-soft)] bg-[color:var(--surface)] p-3"
           >
-            <p className="text-sm font-semibold text-[color:var(--ink)]">
-              {es ? "Tabla" : "Table"}: {table}{" "}
-              <span className="font-normal text-[color:var(--muted-text)]">
-                ({es ? "solo lectura" : "Read-Only"})
-              </span>
+            <p className="mb-2 shrink-0 text-sm font-semibold text-[color:var(--ink)]">
+              {es ? "Tabla" : "Table"}: {table}
             </p>
-            <ResultsTable columns={preview.columns} rows={preview.rows} pageSize={6} />
+            <div className="min-h-0 flex-1 overflow-auto rounded-lg border border-[color:var(--border-soft)]">
+              <ResultsTable columns={preview.columns} rows={preview.rows} compact />
+            </div>
           </section>
         );
       })}

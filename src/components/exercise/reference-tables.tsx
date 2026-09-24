@@ -13,9 +13,10 @@ type PreviewPayload = {
 
 type ReferenceTablesProps = {
   tables: string[];
+  embedded?: boolean;
 };
 
-export function ReferenceTables({ tables }: ReferenceTablesProps) {
+export function ReferenceTables({ tables, embedded = false }: ReferenceTablesProps) {
   const { locale } = useLanguage();
   const es = locale === "es";
   const [previews, setPreviews] = useState<
@@ -61,21 +62,34 @@ export function ReferenceTables({ tables }: ReferenceTablesProps) {
   const names = Object.keys(previews);
   if (names.length === 0) {
     return (
-      <div className="h-[160px] rounded-xl border border-dashed border-[color:var(--border-soft)] bg-[color:var(--surface)]" />
+      <div
+        className={cn(
+          "h-[140px] bg-[color:var(--surface)]",
+          !embedded && "rounded-xl border border-dashed border-[color:var(--border-soft)]"
+        )}
+      />
     );
   }
 
   return (
-    <div className={cn(
-      "grid w-full min-w-0 gap-3",
-      names.length > 1 && "md:grid-cols-2"
-    )}>
+    <div
+      className={cn(
+        "grid w-full min-w-0 gap-0",
+        names.length > 1 && "md:grid-cols-2 md:divide-x md:divide-[color:var(--border-soft)]",
+        embedded ? "bg-[color:var(--surface)]" : "gap-3"
+      )}
+    >
       {names.map((table) => {
         const preview = previews[table];
         return (
           <section
             key={table}
-            className="flex h-[150px] min-w-0 flex-col overflow-hidden rounded-xl border border-[color:var(--border-soft)] bg-[color:var(--surface)] p-3 sm:h-[160px]"
+            className={cn(
+              "flex h-[140px] min-w-0 flex-col overflow-hidden p-3 sm:h-[150px]",
+              embedded
+                ? "bg-[color:var(--surface)]"
+                : "rounded-xl border border-[color:var(--border-soft)] bg-[color:var(--surface)]"
+            )}
           >
             <p className="mb-2 shrink-0 truncate text-sm font-semibold text-[color:var(--ink)]">
               {es ? "Tabla" : "Table"}: {table}

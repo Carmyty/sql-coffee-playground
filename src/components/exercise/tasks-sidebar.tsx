@@ -23,6 +23,7 @@ type TasksSidebarProps = {
   finishHref?: string;
   onAskHint?: () => void;
   hintLevel: number;
+  embedded?: boolean;
 };
 
 export function TasksSidebar({
@@ -36,12 +37,20 @@ export function TasksSidebar({
   finishHref,
   onAskHint,
   hintLevel,
+  embedded = false,
 }: TasksSidebarProps) {
   const { locale, t } = useLanguage();
   const es = locale === "es";
 
   return (
-    <aside className="relative z-10 flex w-full flex-col gap-3 rounded-xl border border-[color:var(--border-soft)] bg-[color:var(--surface)] p-3 shadow-sm sm:p-4 lg:min-h-[32rem]">
+    <aside
+      className={cn(
+        "relative z-10 flex h-full min-h-0 w-full flex-col gap-3 p-3 sm:p-4",
+        embedded
+          ? "bg-[color:var(--cream)]"
+          : "rounded-xl border border-[color:var(--border-soft)] bg-[color:var(--surface)] shadow-sm lg:min-h-[32rem]"
+      )}
+    >
       <h3 className="shrink-0 font-[family-name:var(--font-display)] text-base text-[color:var(--ink)] sm:text-lg">
         {es ? `Ejercicio ${exerciseOrder} — Tareas` : `Exercise ${exerciseOrder} — Tasks`}
       </h3>
@@ -58,10 +67,10 @@ export function TasksSidebar({
                 className={cn(
                   "flex w-full items-start gap-2 rounded-lg px-2 py-2 text-left text-sm leading-relaxed transition-colors",
                   task.state === "active" &&
-                    "bg-[color:var(--accent-soft)] text-[color:var(--ink)] ring-1 ring-[color:var(--accent)]/30",
+                    "bg-[color:var(--surface)] text-[color:var(--ink)] ring-1 ring-[color:var(--accent)]/30",
                   task.state === "done" && "bg-[color:var(--success-soft)] text-[color:var(--success)]",
                   task.state === "locked" && "cursor-not-allowed text-[color:var(--muted-text)]/70",
-                  clickable && task.state !== "active" && "hover:bg-[color:var(--cream)]"
+                  clickable && task.state !== "active" && "hover:bg-[color:var(--surface)]/70"
                 )}
               >
                 <span className="mt-0.5 shrink-0">
@@ -73,7 +82,7 @@ export function TasksSidebar({
                     <Circle className="size-4 text-[color:var(--accent)]" />
                   )}
                 </span>
-                <span className="min-w-0 flex-1 break-words [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:4] overflow-hidden">
+                <span className="min-w-0 flex-1 overflow-hidden break-words [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:4]">
                   <span className="font-semibold tabular-nums">{index + 1}. </span>
                   {task.label}
                 </span>
@@ -84,7 +93,7 @@ export function TasksSidebar({
       </ol>
 
       {expectedDescription ? (
-        <div className="shrink-0 rounded-lg border border-dashed border-[color:var(--border-soft)] bg-[color:var(--cream)]/60 p-3">
+        <div className="shrink-0 rounded-lg border border-dashed border-[color:var(--border-soft)] bg-[color:var(--surface)] p-3">
           <p className="mb-1 text-[0.65rem] font-semibold uppercase tracking-[0.12em] text-[color:var(--muted-text)]">
             {t("expectedResult")}
           </p>

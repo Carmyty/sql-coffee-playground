@@ -18,6 +18,8 @@ type QueryResultsPanelProps = {
   liveError?: string | null;
   liveBusy?: boolean;
   matched?: boolean;
+  embedded?: boolean;
+  className?: string;
 };
 
 export function QueryResultsPanel({
@@ -26,6 +28,8 @@ export function QueryResultsPanel({
   liveError,
   liveBusy,
   matched,
+  embedded = false,
+  className,
 }: QueryResultsPanelProps) {
   const { locale, t } = useLanguage();
   const es = locale === "es";
@@ -34,10 +38,16 @@ export function QueryResultsPanel({
   return (
     <section
       className={cn(
-        "flex h-[240px] min-w-0 flex-col overflow-hidden rounded-xl border p-3 sm:h-[280px] sm:p-4",
-        matched
-          ? "border-[color:var(--success)]/50 bg-[color:var(--success-soft)]"
-          : "border-[color:var(--border-soft)] bg-[color:var(--surface)]"
+        "flex min-h-0 min-w-0 flex-col overflow-hidden p-3 sm:p-4",
+        embedded
+          ? "h-full bg-[color:var(--surface)]"
+          : "h-[240px] rounded-xl border sm:h-[280px]",
+        !embedded &&
+          (matched
+            ? "border-[color:var(--success)]/50 bg-[color:var(--success-soft)]"
+            : "border-[color:var(--border-soft)] bg-[color:var(--surface)]"),
+        embedded && matched && "bg-[color:var(--success-soft)]",
+        className
       )}
     >
       <div className="mb-2 flex shrink-0 items-center justify-between gap-2">
@@ -68,7 +78,7 @@ export function QueryResultsPanel({
         ) : live && live.columns.length > 0 ? (
           <ResultsTable columns={live.columns} rows={live.rows} pageSize={50} compact />
         ) : (
-          <div className="flex h-full items-center justify-center p-4 text-sm text-[color:var(--muted-text)]">
+          <div className="flex h-full min-h-[4rem] items-center justify-center p-4 text-sm text-[color:var(--muted-text)]">
             —
           </div>
         )}

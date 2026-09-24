@@ -66,8 +66,8 @@ export function SqlEditor({
   const resolvedPlaceholder =
     placeholder ||
     (locale === "en"
-      ? "Write your SQL query here…\nExample: SELECT * FROM customers;"
-      : "Escribe tu consulta SQL aquí…\nEjemplo: SELECT * FROM customers;");
+      ? "Write T-SQL here…\nExample: SELECT TOP 10 * FROM customers;"
+      : "Escribe T-SQL aquí…\nEjemplo: SELECT TOP 10 * FROM customers;");
 
   if (!useHighlight) {
     return (

@@ -77,7 +77,13 @@ const CLAUSE_HELP: Array<{ key: string; pattern: RegExp; title: string; text: st
     key: "limit",
     pattern: /\blimit\b/i,
     title: "LIMIT",
-    text: "Corta el resultado a N filas. Ideal para «top 10» junto con ORDER BY.",
+    text: "Corta el resultado a N filas en PostgreSQL/MySQL. En este curso T-SQL usa TOP n después de SELECT.",
+  },
+  {
+    key: "top",
+    pattern: /\btop\s+\d+\b/i,
+    title: "TOP",
+    text: "En T-SQL / SQL Server, TOP n va después de SELECT. Ideal para «top 10» junto con ORDER BY.",
   },
   {
     key: "insert",
@@ -155,8 +161,8 @@ export function improvementHint(sql: string): string[] {
   if (/\bselect\s+\*/i.test(stripped)) {
     hints.push("SELECT * es cómodo para explorar. Cuando ya sepas el objetivo, lista solo las columnas que necesitas.");
   }
-  if (/\bfrom\b/i.test(stripped) && !/\bwhere\b/i.test(stripped) && !/\blimit\b/i.test(stripped) && classifyStatement(sql) === "select") {
-    hints.push("Si la tabla es grande, agrega WHERE o LIMIT mientras pruebas para no traer todo.");
+  if (/\bfrom\b/i.test(stripped) && !/\bwhere\b/i.test(stripped) && !/\btop\s+\d+\b/i.test(stripped) && !/\blimit\b/i.test(stripped) && classifyStatement(sql) === "select") {
+    hints.push("Si la tabla es grande, agrega WHERE o TOP mientras pruebas para no traer todo.");
   }
   if (/\bjoin\b/i.test(stripped) && !/\bon\b/i.test(stripped) && !/\bcross\s+join\b/i.test(stripped)) {
     hints.push("Un JOIN necesita ON (o USING) para explicar cómo se relacionan las tablas. Sin eso, CROSS JOIN multiplica filas.");
@@ -164,8 +170,11 @@ export function improvementHint(sql: string): string[] {
   if (/\bgroup\s+by\b/i.test(stripped) && !/\border\s+by\b/i.test(stripped)) {
     hints.push("Después de agrupar, ORDER BY COUNT(*) DESC suele hacer más legible un ranking.");
   }
-  if (/\blike\b/i.test(stripped) && !/\bilike\b/i.test(stripped)) {
-    hints.push("LIKE distingue mayúsculas y minúsculas en PostgreSQL. ILIKE es más amable si no te importa el caso.");
+  if (/\blimit\b/i.test(stripped)) {
+    hints.push("LIMIT es de PostgreSQL/MySQL. En T-SQL escribe SELECT TOP n ...");
+  }
+  if (/\bilike\b/i.test(stripped)) {
+    hints.push("ILIKE es de PostgreSQL. En T-SQL usa LIKE (aquí ya es insensible a mayúsculas).");
   }
   if (hints.length === 0) {
     hints.push("La estructura se entiende. Revisa alias claros, nombres de columnas y si el filtro describe exactamente la pregunta de negocio.");

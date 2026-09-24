@@ -298,7 +298,7 @@ export function inspectSql(
     issues.push({
       code: "empty",
       message: "La consulta está vacía.",
-      beginnerHint: "Escribe una instrucción SQL, por ejemplo SELECT * FROM customers LIMIT 10;",
+      beginnerHint: "Escribe una instrucción T-SQL, por ejemplo SELECT TOP 10 * FROM customers;",
       severity: "block",
     });
     return {

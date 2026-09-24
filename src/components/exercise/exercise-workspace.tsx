@@ -26,14 +26,15 @@ import { localizeExercise } from "@/lib/i18n/exercises-en";
 import { localizeModule } from "@/lib/i18n/modules-en";
 import { AccuracyBar } from "@/components/exercise/accuracy-bar";
 import { CompletionBanner } from "@/components/exercise/completion-banner";
+import { LiveResultPanels } from "@/components/exercise/live-result-panels";
 import { SqlEditor } from "@/components/editor/sql-editor";
-import { ResultsTable } from "@/components/exercise/results-table";
 import { useProgress } from "@/hooks/use-progress";
 import { useLanguage } from "@/hooks/use-language";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { cn } from "@/lib/utils";
+import { isLikelySelect } from "@/lib/tsql/translate";
 
 type SchemaPayload = {
   ok: boolean;
@@ -98,6 +99,9 @@ export function ExerciseWorkspace({ exercise }: { exercise: Exercise }) {
   const [explainText, setExplainText] = useState<string | null>(null);
   const [showCompletion, setShowCompletion] = useState(false);
   const [expectedPreview, setExpectedPreview] = useState<ExpectedPreview | null>(null);
+  const [liveResult, setLiveResult] = useState<ExecuteResponse | null>(null);
+  const [liveBusy, setLiveBusy] = useState(false);
+  const [liveError, setLiveError] = useState<string | null>(null);
 
   const accuracy = useMemo(
     () => scoreLiveAccuracy(sql, exercise, locale),
@@ -111,7 +115,10 @@ export function ExerciseWorkspace({ exercise }: { exercise: Exercise }) {
   const moduleTitle = learningModule
     ? localizeModule(learningModule, locale).title
     : t("pageLearn");
-  const envLabel = exercise.environment === "read" ? t("envRead") : t("envSandbox");
+  const envLabel =
+    exercise.environment === "read"
+      ? `${t("envRead")} · T-SQL`
+      : `${t("envSandbox")} · T-SQL`;
   const solutionReady =
     progress.solutionUnlocked ||
     progress.attempts >= exercise.unlockAfterAttempts ||
@@ -132,6 +139,8 @@ export function ExerciseWorkspace({ exercise }: { exercise: Exercise }) {
     setReference(undefined);
     setExplainText(null);
     setPendingConfirm(false);
+    setLiveResult(null);
+    setLiveError(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [exercise.id]);
 
@@ -172,6 +181,49 @@ export function ExerciseWorkspace({ exercise }: { exercise: Exercise }) {
       cancelled = true;
     };
   }, [exercise.id, localized.expectedResult]);
+
+  useEffect(() => {
+    if (exercise.environment !== "read") return;
+    const trimmed = sql.trim();
+    if (!trimmed || trimmed.length < 8 || !isLikelySelect(trimmed)) {
+      setLiveResult(null);
+      setLiveError(null);
+      setLiveBusy(false);
+      return;
+    }
+
+    let cancelled = false;
+    setLiveBusy(true);
+    const timer = window.setTimeout(() => {
+      fetch("/api/sql/execute", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sql: trimmed, mode: "read" }),
+      })
+        .then((res) => res.json())
+        .then((data: ExecuteResponse) => {
+          if (cancelled) return;
+          if (data.error) {
+            setLiveError(data.error.beginnerHint || data.error.message);
+            setLiveResult(null);
+          } else {
+            setLiveError(null);
+            setLiveResult(data);
+          }
+        })
+        .catch(() => {
+          if (!cancelled) setLiveError(locale === "en" ? "Could not run live preview." : "No se pudo previsualizar.");
+        })
+        .finally(() => {
+          if (!cancelled) setLiveBusy(false);
+        });
+    }, 450);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [sql, exercise.environment, exercise.id, locale]);
 
   async function runQuery(confirmMutation = false) {
     setBusy(true);
@@ -275,7 +327,7 @@ export function ExerciseWorkspace({ exercise }: { exercise: Exercise }) {
 
   function formatSql() {
     try {
-      setSql(format(sql, { language: "postgresql" }));
+      setSql(format(sql, { language: "tsql" }));
     } catch {
       setExplainText(t("formatFail"));
     }
@@ -450,15 +502,7 @@ export function ExerciseWorkspace({ exercise }: { exercise: Exercise }) {
         </div>
       </section>
 
-      <section className="animate-fade-up space-y-3 rounded-2xl border border-[color:var(--border-soft)] bg-[color:var(--accent-soft)]/50 p-4">
-        <div>
-          <p className="mb-1 text-xs font-semibold uppercase tracking-[0.14em] text-[color:var(--muted-text)]">
-            {t("expectedResult")}
-          </p>
-          <p className="text-sm leading-relaxed text-[color:var(--ink)] sm:text-base">
-            {expectedDescription}
-          </p>
-        </div>
+      <section className="animate-fade-up space-y-3">
         <div className="flex flex-wrap gap-1.5">
           {exercise.suggestedTables.map((table) => (
             <Badge key={table} variant="outline" className="bg-[color:var(--surface)]">
@@ -467,19 +511,39 @@ export function ExerciseWorkspace({ exercise }: { exercise: Exercise }) {
             </Badge>
           ))}
         </div>
-        {expectedPreview?.mode === "table" && (expectedPreview.columns?.length ?? 0) > 0 ? (
-          <div className="space-y-2">
-            <p className="text-sm font-medium text-[color:var(--ink)]">{t("tableYouShouldSee")}</p>
-            <ResultsTable
-              columns={expectedPreview.columns || []}
-              rows={expectedPreview.rows || []}
-              pageSize={5}
-            />
-            {expectedPreview.truncated ? (
-              <p className="text-xs text-[color:var(--muted-text)]">{t("previewNote")}</p>
-            ) : null}
-          </div>
-        ) : expectedPreview?.mode === "mutation" ? (
+        <LiveResultPanels
+          expectedDescription={expectedDescription}
+          expected={
+            expectedPreview?.mode === "table"
+              ? {
+                  columns: expectedPreview.columns || [],
+                  rows: expectedPreview.rows || [],
+                  rowCount: expectedPreview.rowCount,
+                }
+              : null
+          }
+          live={
+            liveResult && !liveResult.error
+              ? {
+                  columns: liveResult.columns,
+                  rows: liveResult.rows,
+                  rowCount: liveResult.rowCount,
+                  executionMs: liveResult.executionMs,
+                }
+              : result && !result.error
+                ? {
+                    columns: result.columns,
+                    rows: result.rows,
+                    rowCount: result.rowCount,
+                    executionMs: result.executionMs,
+                  }
+                : null
+          }
+          liveError={liveError || result?.error?.beginnerHint || null}
+          liveBusy={liveBusy}
+          matched={validation?.status === "correct"}
+        />
+        {expectedPreview?.mode === "mutation" ? (
           <p className="rounded-xl border border-dashed border-[color:var(--border-soft)] bg-[color:var(--surface)] p-3 text-sm text-[color:var(--muted-text)]">
             {t("mutationNote")}
           </p>
@@ -521,26 +585,6 @@ export function ExerciseWorkspace({ exercise }: { exercise: Exercise }) {
               : ""}
           </AlertDescription>
         </Alert>
-      ) : null}
-
-      {result?.error ? (
-        <Alert variant="destructive">
-          <AlertTitle>{t("explainedError")}</AlertTitle>
-          <AlertDescription>
-            <p className="font-medium">{result.error.beginnerHint}</p>
-            <p className="mt-1 font-mono text-xs opacity-80">{result.error.message}</p>
-          </AlertDescription>
-        </Alert>
-      ) : null}
-
-      {result && !result.error ? (
-        <div className="space-y-2 rounded-2xl border border-[color:var(--border-soft)] bg-[color:var(--surface)] p-4">
-          <p className="text-sm font-medium text-[color:var(--ink)]">{t("yourResult")}</p>
-          <p className="text-sm text-[color:var(--muted-text)]">
-            {result.rowCount} {t("rows")} · {result.executionMs} ms · {t("environment")} {result.schema}
-          </p>
-          <ResultsTable columns={result.columns} rows={result.rows} />
-        </div>
       ) : null}
 
       <section className="space-y-3 rounded-2xl border border-[color:var(--border-soft)] bg-[color:var(--surface)] p-4">

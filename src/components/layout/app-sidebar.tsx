@@ -8,6 +8,7 @@ import {
   Compass,
   FlaskConical,
   LayoutDashboard,
+  Library,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useLanguage } from "@/hooks/use-language";
@@ -21,6 +22,7 @@ const links: Array<{
 }> = [
   { href: "/", labelKey: "navDashboard", shortKey: "navDashboardShort", icon: LayoutDashboard },
   { href: "/learn", labelKey: "navLearn", shortKey: "navLearnShort", icon: BookOpenText },
+  { href: "/docs", labelKey: "navDocs", shortKey: "navDocsShort", icon: Library },
   { href: "/explore", labelKey: "navExplore", shortKey: "navExploreShort", icon: Compass },
   { href: "/lab", labelKey: "navLab", shortKey: "navLabShort", icon: FlaskConical },
   { href: "/lessons", labelKey: "navLessons", shortKey: "navLessonsShort", icon: Coffee },

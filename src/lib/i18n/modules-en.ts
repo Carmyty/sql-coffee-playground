@@ -12,7 +12,7 @@ const EN: Record<string, Pick<LearningModule, "title" | "description">> = {
   },
   orden: {
     title: "Sorting and limited results",
-    description: "Sort rankings and trim the result with ORDER BY and LIMIT.",
+    description: "Sort rankings and trim the result with ORDER BY and TOP (T-SQL).",
   },
   agregaciones: {
     title: "Aggregations",

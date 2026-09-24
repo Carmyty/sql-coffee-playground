@@ -1,7 +1,7 @@
 "use client";
 
 import CodeMirror from "@uiw/react-codemirror";
-import { sql, PostgreSQL } from "@codemirror/lang-sql";
+import { sql, MSSQL } from "@codemirror/lang-sql";
 import { EditorView } from "@codemirror/view";
 import { placeholder as placeholderExt } from "@codemirror/view";
 import { useTheme } from "next-themes";
@@ -30,7 +30,7 @@ export default function CodemirrorSql({
   const extensions = useMemo(
     () => [
       sql({
-        dialect: PostgreSQL,
+        dialect: MSSQL,
         schema: schema || {},
         upperCaseKeywords: true,
       }),

@@ -177,22 +177,22 @@ SELECT item_id FROM inventory`,
     estimatedMinutes: 8,
     concepts: ["create-table"],
     suggestedTables: [],
-    objective: "En sql_playground crea la tabla tasting_notes con note_id SERIAL, flavor TEXT y created_at TIMESTAMP.",
+    objective: "En sql_playground crea la tabla tasting_notes con note_id INT IDENTITY(1,1), flavor TEXT y created_at TIMESTAMP.",
     expectedResult: "La tabla tasting_notes existe en el sandbox. La base coffee_chain no cambia.",
     reasoningChecklist: ["¿Estás en práctica segura?", "¿Definiste tipos de dato?"],
     hints: [
-      "CREATE TABLE define nombre, columnas y tipos. SERIAL es un entero autoincremental.",
-      "CREATE TABLE tasting_notes (note_id SERIAL PRIMARY KEY, flavor TEXT, created_at TIMESTAMP DEFAULT NOW());",
+      "CREATE TABLE define nombre, columnas y tipos. INT IDENTITY(1,1) es un entero autoincremental.",
+      "CREATE TABLE tasting_notes (note_id INT IDENTITY(1,1) PRIMARY KEY, flavor TEXT, created_at DATETIME2 DEFAULT GETDATE());",
       "El search_path del sandbox es sql_playground, no hace falta calificar el esquema.",
     ],
     referenceSql: `CREATE TABLE tasting_notes (
-  note_id SERIAL PRIMARY KEY,
-  flavor TEXT NOT NULL,
-  created_at TIMESTAMP DEFAULT NOW()
+  note_id INT IDENTITY(1,1) PRIMARY KEY,
+  flavor NVARCHAR(MAX) NOT NULL,
+  created_at DATETIME2 DEFAULT GETDATE()
 )`,
     referenceExplanation: [
       { clause: "CREATE TABLE", text: "Nace una tabla nueva solo en sql_playground." },
-      { clause: "SERIAL PRIMARY KEY", text: "Identificador automático e índice primario." },
+      { clause: "INT IDENTITY(1,1) PRIMARY KEY", text: "Identificador automático e índice primario." },
     ],
     starterSql: "-- Recuerda: esto corre en sql_playground\n",
     environment: "sandbox",
@@ -220,7 +220,7 @@ SELECT item_id FROM inventory`,
     referenceSql: `INSERT INTO practice_customers (first_name, last_name, email, city, notes)
 VALUES ('Mia', 'Sandbox', 'mia.sandbox@sqlcoffee.dev', 'Puebla', 'Insert de práctica')`,
     referenceExplanation: [
-      { clause: "INSERT INTO ... VALUES", text: "Una fila nueva. El practice_id lo asigna SERIAL." },
+      { clause: "INSERT INTO ... VALUES", text: "Una fila nueva. El practice_id lo asigna INT IDENTITY(1,1)." },
     ],
     starterSql: "",
     environment: "sandbox",
@@ -314,7 +314,7 @@ WHERE email = 'nora.prueba@sandbox.dev'`,
       "ALTER TABLE practice_menu_items ADD COLUMN is_seasonal BOOLEAN DEFAULT FALSE;",
       "DROP COLUMN también es ALTER, pero primero practica ADD.",
     ],
-    referenceSql: "ALTER TABLE practice_menu_items ADD COLUMN is_seasonal BOOLEAN DEFAULT FALSE",
+    referenceSql: "ALTER TABLE practice_menu_items ADD COLUMN is_seasonal BOOLEAN DEFAULT 0",
     referenceExplanation: [
       { clause: "ADD COLUMN", text: "Cambia el molde de la tabla. DEFAULT llena las filas ya existentes." },
     ],
@@ -393,20 +393,20 @@ WHERE email = 'nora.prueba@sandbox.dev'`,
     expectedResult: "Como máximo 10 filas, Ana u otros frecuentes arriba si el seed lo respalda.",
     reasoningChecklist: ["¿Agrupas por cliente?", "¿Ordenas y recortas?"],
     hints: [
-      "Suma quantity * unit_price, agrupa por cliente, ORDER BY total DESC LIMIT 10.",
+      "Suma quantity * unit_price, agrupa por cliente, ORDER BY total DESC TOP 10.",
       "JOIN customers, orders, order_items. WHERE customer_id IS NOT NULL.",
       "El walk-in sin cliente no entra al ranking.",
     ],
-    referenceSql: `SELECT c.email, SUM(oi.quantity * oi.unit_price) AS gasto
+    referenceSql: `SELECT TOP 10 c.email, SUM(oi.quantity * oi.unit_price) AS gasto
 FROM customers c
 JOIN orders o ON o.customer_id = c.customer_id
 JOIN order_items oi ON oi.order_id = o.order_id
 GROUP BY c.email
 ORDER BY gasto DESC
-LIMIT 10`,
+`,
     referenceExplanation: [
       { clause: "SUM(quantity * unit_price)", text: "Gasto real por líneas de ticket." },
-      { clause: "ORDER BY gasto DESC LIMIT 10", text: "Ranking recortado a diez." },
+      { clause: "ORDER BY gasto DESC TOP 10", text: "Ranking recortado a diez." },
     ],
     starterSql: "",
     environment: "read",
@@ -415,13 +415,13 @@ LIMIT 10`,
       ignoreRowOrder: false,
       requiredKeywords: ["sum", "group by", "order by", "limit"],
       maxRows: 10,
-      compareSql: `SELECT c.email, SUM(oi.quantity * oi.unit_price) AS gasto
+      compareSql: `SELECT TOP 10 c.email, SUM(oi.quantity * oi.unit_price) AS gasto
 FROM customers c
 JOIN orders o ON o.customer_id = c.customer_id
 JOIN order_items oi ON oi.order_id = o.order_id
 GROUP BY c.email
 ORDER BY gasto DESC
-LIMIT 10`,
+`,
     },
     unlockAfterAttempts: 2,
   },
@@ -440,7 +440,7 @@ LIMIT 10`,
     hints: [
       "SUM(oi.quantity * oi.unit_price) GROUP BY mi.name ORDER BY 2 DESC",
       "JOIN menu_items.",
-      "LIMIT 10 es bienvenida pero no obligatoria.",
+      "TOP 10 es bienvenida pero no obligatoria.",
     ],
     referenceSql: `SELECT mi.name, SUM(oi.quantity * oi.unit_price) AS ingresos
 FROM order_items oi

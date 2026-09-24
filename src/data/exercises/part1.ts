@@ -324,13 +324,13 @@ export const EXERCISES: Exercise[] = [
     expectedResult: "Nombres como Frappe de café o Limonada de café.",
     reasoningChecklist: [checklist.filter, "¿Te importa el uso de mayúsculas?"],
     hints: [
-      "ILIKE no distingue mayúsculas. El % es un comodín de cualquier texto.",
-      "WHERE name ILIKE '%[palabra]%'",
+      "LIKE no distingue mayúsculas. El % es un comodín de cualquier texto.",
+      "WHERE name LIKE '%[palabra]%'",
       "La palabra es cafe o café. En esta base el acento está en «café».",
     ],
-    referenceSql: "SELECT name, price FROM menu_items WHERE name ILIKE '%café%'",
+    referenceSql: "SELECT name, price FROM menu_items WHERE name LIKE '%café%'",
     referenceExplanation: [
-      { clause: "ILIKE '%café%'", text: "El porcentaje de ambos lados significa «contiene». ILIKE ignora mayúsculas." },
+      { clause: "LIKE '%café%'", text: "El porcentaje de ambos lados significa «contiene». LIKE ignora mayúsculas." },
     ],
     starterSql: "",
     environment: "read",
@@ -338,7 +338,7 @@ export const EXERCISES: Exercise[] = [
       matchMode: "set",
       ignoreRowOrder: true,
       requiredKeywords: ["ilike"],
-      compareSql: "SELECT name, price FROM menu_items WHERE name ILIKE '%café%'",
+      compareSql: "SELECT name, price FROM menu_items WHERE name LIKE '%café%'",
     },
     unlockAfterAttempts: 2,
   },
@@ -399,7 +399,7 @@ WHERE mc.name IN ('Espresso', 'Frías')`,
     ],
     referenceSql: `SELECT name, price, is_available
 FROM menu_items
-WHERE is_available = TRUE
+WHERE is_available = 1
   AND (price < 40 OR price > 80)`,
     referenceExplanation: [
       { clause: "AND + OR", text: "Sin paréntesis, AND se une primero y el filtro cambiaría de significado." },
@@ -412,7 +412,7 @@ WHERE is_available = TRUE
       requiredKeywords: ["and", "or", "where"],
       compareSql: `SELECT name, price, is_available
 FROM menu_items
-WHERE is_available = TRUE
+WHERE is_available = 1
   AND (price < 40 OR price > 80)`,
     },
     unlockAfterAttempts: 2,
@@ -517,14 +517,14 @@ WHERE is_available = TRUE
     expectedResult: "10 filas, la fecha más reciente arriba.",
     reasoningChecklist: ["¿El orden importa?", "¿Necesitas recortar el resultado?"],
     hints: [
-      "ORDER BY fecha DESC pone lo más nuevo primero. LIMIT recorta.",
-      "SELECT ... FROM orders ORDER BY [fecha] DESC LIMIT 10;",
+      "ORDER BY fecha DESC pone lo más nuevo primero. TOP recorta.",
+      "SELECT TOP 10 ... FROM orders ORDER BY [fecha] DESC;",
       "La columna es order_date.",
     ],
-    referenceSql: "SELECT order_id, customer_id, order_date, status FROM orders ORDER BY order_date DESC LIMIT 10",
+    referenceSql: "SELECT TOP 10 order_id, customer_id, order_date, status FROM orders ORDER BY order_date DESC ",
     referenceExplanation: [
       { clause: "ORDER BY order_date DESC", text: "DESC invierte el orden natural (de más reciente a más antiguo)." },
-      { clause: "LIMIT 10", text: "Devuelve solo las primeras 10 filas ya ordenadas." },
+      { clause: "TOP 10", text: "Devuelve solo las primeras 10 filas ya ordenadas." },
     ],
     starterSql: "",
     environment: "read",
@@ -534,7 +534,7 @@ WHERE is_available = TRUE
       requiredKeywords: ["order by", "limit"],
       expectedRowCount: 10,
       maxRows: 10,
-      compareSql: "SELECT order_id, order_date FROM orders ORDER BY order_date DESC LIMIT 10",
+      compareSql: "SELECT TOP 10 order_id, order_date FROM orders ORDER BY order_date DESC ",
     },
     unlockAfterAttempts: 2,
   },
@@ -542,7 +542,7 @@ WHERE is_available = TRUE
     id: "limit-only",
     moduleId: "orden",
     order: 2,
-    title: "Probar con LIMIT",
+    title: "Probar con TOP",
     difficulty: "basico",
     estimatedMinutes: 4,
     concepts: ["limit"],
@@ -551,12 +551,12 @@ WHERE is_available = TRUE
     expectedResult: "Exactamente 5 filas de menu_items.",
     reasoningChecklist: ["¿Necesitas recortar el resultado?"],
     hints: [
-      "LIMIT N se coloca al final.",
-      "SELECT * FROM menu_items LIMIT 5;",
+      "TOP N va justo después de SELECT.",
+      "SELECT TOP 5 * FROM menu_items;",
       "Cinco es el número pedido.",
     ],
-    referenceSql: "SELECT item_id, name, price FROM menu_items LIMIT 5",
-    referenceExplanation: [{ clause: "LIMIT 5", text: "Útil para explorar sin saturar la vista de resultados." }],
+    referenceSql: "SELECT TOP 5 item_id, name, price FROM menu_items ",
+    referenceExplanation: [{ clause: "TOP 5", text: "Útil para explorar sin saturar la vista de resultados." }],
     starterSql: "",
     environment: "read",
     validation: { matchMode: "exists", requiredKeywords: ["limit"], maxRows: 5, minRows: 5 },

@@ -6,6 +6,7 @@ import {
   getStatementTimeoutMs,
   prisma,
 } from "@/lib/db";
+import { translateTsqlToPostgres } from "@/lib/tsql/translate";
 
 export type QueryEnvironment = "read" | "sandbox";
 
@@ -33,6 +34,8 @@ export type ExecuteSqlResult = {
   truncated: boolean;
   executionMs: number;
   commandTag?: string;
+  dialect?: "tsql";
+  translatedSql?: string;
   warning?: {
     message: string;
     estimatedRows?: number;
@@ -79,33 +82,33 @@ function rowsFromUnknown(result: unknown): Record<string, unknown>[] {
 export function beginnerErrorHint(message: string): string {
   const lower = message.toLowerCase();
   if (lower.includes("does not exist") && lower.includes("relation")) {
-    return "PostgreSQL no encontró esa tabla. Revisa el nombre en el explorador de esquema y el search_path (coffee_chain o sql_playground).";
+    return "No se encontró esa tabla. En T-SQL usa el nombre exacto (p. ej. customers). Revisa el explorador de esquema.";
   }
   if (lower.includes("does not exist") && lower.includes("column")) {
-    return "Esa columna no existe en la tabla. Abre «Ver esquema» y copia el nombre exacto, incluyendo guiones bajos.";
+    return "Esa columna no existe. Copia el nombre exacto del esquema (incluye guiones bajos).";
   }
   if (lower.includes("syntax error")) {
-    return "Hay un error de escritura SQL. Revisa comas, palabras clave y que cada cláusula esté en el orden SELECT → FROM → WHERE → GROUP BY → HAVING → ORDER BY.";
+    return "Error de sintaxis T-SQL. Recuerda: TOP va después de SELECT; ORDER BY antes de OFFSET/FETCH; no uses LIMIT (eso es PostgreSQL/MySQL).";
   }
   if (lower.includes("must appear in the group by") || lower.includes("not in aggregate")) {
-    return "Si usas GROUP BY, cada columna del SELECT debe estar agrupada o dentro de una función como COUNT(), SUM() o AVG().";
+    return "Con GROUP BY, cada columna del SELECT debe estar agrupada o dentro de COUNT(), SUM(), AVG(), etc.";
   }
   if (lower.includes("aggregate") && lower.includes("where")) {
-    return "WHERE no puede filtrar resultados de COUNT o AVG. Usa HAVING después de GROUP BY.";
+    return "WHERE no filtra agregados. Usa HAVING después de GROUP BY.";
   }
   if (lower.includes("permission denied") || lower.includes("read-only")) {
-    return "Esa operación no está permitida en este entorno. Las escrituras van al sandbox sql_playground.";
+    return "Esa operación no está permitida aquí. Las escrituras van al sandbox sql_playground.";
   }
   if (lower.includes("unique") || lower.includes("duplicate")) {
-    return "Ese valor ya existe en una columna única, por ejemplo un email repetido. Elige otro valor.";
+    return "Valor duplicado en una columna única (p. ej. email). Elige otro valor.";
   }
   if (lower.includes("foreign key") || lower.includes("violates foreign")) {
-    return "La fila apunta a un id que no existe en la tabla relacionada. Revisa las llaves foráneas en el explorador.";
+    return "La fila apunta a un id que no existe en la tabla relacionada.";
   }
   if (lower.includes("timeout") || lower.includes("canceling statement")) {
-    return "La consulta tardó demasiado. Agrega un filtro o un LIMIT mientras pruebas.";
+    return "La consulta tardó demasiado. Agrega un filtro o TOP mientras pruebas.";
   }
-  return "Lee el mensaje técnico y compáralo con las tablas y columnas del esquema. Si estás atascado, pide una pista en el ejercicio.";
+  return "Revisa el mensaje técnico y compáralo con el esquema. Si estás atascado, pide una pista.";
 }
 
 export function quoteIdent(identifier: string) {
@@ -127,7 +130,7 @@ function resolveMode(
 async function estimateImpact(sql: string | undefined): Promise<number | undefined> {
   if (!sql) return undefined;
   try {
-    const rows = await prisma.$queryRawUnsafe(sql) as Array<{ estimated_rows?: number }>;
+    const rows = (await prisma.$queryRawUnsafe(sql)) as Array<{ estimated_rows?: number }>;
     const value = rows[0]?.estimated_rows;
     return typeof value === "number" ? value : Number(value);
   } catch {
@@ -141,13 +144,16 @@ export async function executeSql(request: ExecuteSqlRequest): Promise<ExecuteSql
   const timeoutMs = getStatementTimeoutMs();
   const maxRows = Math.min(request.maxRows ?? getMaxRows(), getMaxRows());
 
-  const previewGuard = inspectSql(request.sql, {
+  const translated = translateTsqlToPostgres(request.sql);
+  const executableSql = translated.sql;
+
+  const previewGuard = inspectSql(executableSql, {
     mode: "sandbox",
     readSchema,
     sandboxSchema,
   });
   const mode = resolveMode(request.mode, previewGuard.kind, previewGuard.isMutation);
-  const guard = inspectSql(request.sql, { mode, readSchema, sandboxSchema });
+  const guard = inspectSql(executableSql, { mode, readSchema, sandboxSchema });
   const schema = mode === "sandbox" ? sandboxSchema : readSchema;
 
   const base: ExecuteSqlResult = {
@@ -160,6 +166,8 @@ export async function executeSql(request: ExecuteSqlRequest): Promise<ExecuteSql
     rowCount: 0,
     truncated: false,
     executionMs: 0,
+    dialect: "tsql",
+    translatedSql: executableSql,
     guard,
   };
 
@@ -183,7 +191,7 @@ export async function executeSql(request: ExecuteSqlRequest): Promise<ExecuteSql
           if (table.includes(".")) return full;
           return `FROM ${sandboxSchema}.${table}`;
         }
-      ),
+      )
     );
     const impact =
       guard.kind === "update" || guard.kind === "delete"
@@ -203,7 +211,6 @@ export async function executeSql(request: ExecuteSqlRequest): Promise<ExecuteSql
   try {
     return await prisma.$transaction(
       async (tx) => {
-        // Transaction-local settings cannot leak through Prisma's connection pool.
         if (mode === "read") {
           await tx.$executeRawUnsafe("SET TRANSACTION READ ONLY");
         }
@@ -233,9 +240,7 @@ export async function executeSql(request: ExecuteSqlRequest): Promise<ExecuteSql
         const rows = rowsFromUnknown(raw);
         const truncated = rows.length > maxRows;
         const limited = truncated ? rows.slice(0, maxRows) : rows;
-        const columns = limited[0]
-          ? Object.keys(limited[0]).map((name) => ({ name }))
-          : [];
+        const columns = limited[0] ? Object.keys(limited[0]).map((name) => ({ name })) : [];
 
         return {
           ...base,

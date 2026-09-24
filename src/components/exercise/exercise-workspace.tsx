@@ -162,17 +162,22 @@ export function ExerciseWorkspace({ exercise }: { exercise: Exercise }) {
     return taskChain.map((item, index) => {
       const done = completedIds.has(item.id) || getExercise(item.id).status === "correct";
       const localizedItem = localizeExercise(item, locale);
+      // Prefer short titles in the list; full objective only for the active task.
+      const label =
+        item.id === activeTaskId || (!done && index === firstOpenIndex)
+          ? localizedItem.objective
+          : localizedItem.title;
       if (done) {
-        return { id: item.id, label: localizedItem.objective, state: "done" as const };
+        return { id: item.id, label: localizedItem.title, state: "done" as const };
       }
       if (item.id === activeTaskId) {
-        return { id: item.id, label: localizedItem.objective, state: "active" as const };
+        return { id: item.id, label, state: "active" as const };
       }
       const gate = activeIndex >= 0 ? activeIndex : firstOpenIndex;
       if (gate >= 0 && index > gate) {
         return { id: item.id, label: localizedItem.title, state: "locked" as const };
       }
-      return { id: item.id, label: localizedItem.objective, state: "locked" as const };
+      return { id: item.id, label: localizedItem.title, state: "locked" as const };
     });
   }, [taskChain, completedIds, activeTaskId, locale, getExercise]);
 
@@ -471,7 +476,7 @@ export function ExerciseWorkspace({ exercise }: { exercise: Exercise }) {
     : undefined;
 
   return (
-    <div className="mx-auto flex min-w-0 max-w-6xl flex-col gap-3">
+    <div className="mx-auto flex w-full min-w-0 max-w-6xl flex-col gap-3 overflow-x-hidden">
       <div className="flex justify-start">
         <Link
           href={`/learn/${exercise.moduleId}`}
@@ -482,19 +487,19 @@ export function ExerciseWorkspace({ exercise }: { exercise: Exercise }) {
           aria-label={t("backToSection")}
         >
           <List className="size-4" />
-          <span className="max-w-[16rem] truncate sm:max-w-none">
+          <span className="max-w-[12rem] truncate sm:max-w-[20rem] md:max-w-none">
             {t("backToSectionNamed", { title: moduleTitle })}
           </span>
         </Link>
       </div>
 
-      <div className="flex items-center justify-between gap-3">
+      <div className="flex items-center justify-between gap-2 sm:gap-3">
         {previous ? (
           <Link
             href={`/learn/${previous.moduleId}/${previous.id}`}
             className={cn(
               buttonVariants({ variant: "outline", size: "icon" }),
-              "pressable size-11 shrink-0 rounded-full border-[color:var(--border-soft)] bg-[color:var(--surface)]"
+              "pressable size-10 shrink-0 rounded-full border-[color:var(--border-soft)] bg-[color:var(--surface)] sm:size-11"
             )}
             aria-label={`${t("previousExercise")}: ${previousLocalized?.title}`}
             title={previousLocalized?.title}
@@ -502,22 +507,24 @@ export function ExerciseWorkspace({ exercise }: { exercise: Exercise }) {
             <ChevronLeft className="size-5" />
           </Link>
         ) : (
-          <span className="size-11 shrink-0" aria-hidden />
+          <span className="size-10 shrink-0 sm:size-11" aria-hidden />
         )}
 
         <div className="min-w-0 flex-1 text-center">
-          <div className="mb-1 flex flex-wrap items-center justify-center gap-2">
+          <div className="mb-1 flex flex-wrap items-center justify-center gap-1.5 sm:gap-2">
             <Badge variant="secondary" className="capitalize">
               {difficultyLabel}
             </Badge>
-            <Badge variant="outline">{envLabel}</Badge>
+            <Badge variant="outline" className="max-w-full truncate">
+              {envLabel}
+            </Badge>
             {isCorrect ? (
               <Badge className="check-burst bg-[color:var(--success)] text-white hover:bg-[color:var(--success)]">
                 {t("completed")}
               </Badge>
             ) : null}
           </div>
-          <h2 className="truncate font-[family-name:var(--font-display)] text-xl text-[color:var(--ink)] sm:text-2xl">
+          <h2 className="truncate font-[family-name:var(--font-display)] text-lg text-[color:var(--ink)] sm:text-xl md:text-2xl">
             {localized.title}
           </h2>
         </div>
@@ -527,23 +534,25 @@ export function ExerciseWorkspace({ exercise }: { exercise: Exercise }) {
             href={`/learn/${afterChain.moduleId}/${afterChain.id}`}
             className={cn(
               buttonVariants({ variant: "outline", size: "icon" }),
-              "pressable size-11 shrink-0 rounded-full border-[color:var(--border-soft)] bg-[color:var(--surface)]"
+              "pressable size-10 shrink-0 rounded-full border-[color:var(--border-soft)] bg-[color:var(--surface)] sm:size-11"
             )}
             aria-label={t("nextExercise")}
           >
             <ChevronRight className="size-5" />
           </Link>
         ) : (
-          <span className="size-11 shrink-0" aria-hidden />
+          <span className="size-10 shrink-0 sm:size-11" aria-hidden />
         )}
       </div>
 
-      <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(16rem,20rem)]">
-        <div className="flex min-w-0 flex-col gap-3">
-          {isRead && activeExercise.suggestedTables.length > 0 ? (
-            <ReferenceTables tables={activeExercise.suggestedTables} />
-          ) : null}
+      {/* Reference tables full-width above the query workspace */}
+      {isRead && activeExercise.suggestedTables.length > 0 ? (
+        <ReferenceTables tables={activeExercise.suggestedTables} />
+      ) : null}
 
+      {/* Query + results | tasks — tasks only beside the editor area */}
+      <div className="grid w-full min-w-0 grid-cols-1 items-stretch gap-3 lg:grid-cols-[minmax(0,1fr)_17.5rem] xl:grid-cols-[minmax(0,1fr)_19rem] lg:gap-4">
+        <div className="flex min-w-0 flex-col gap-3">
           <QueryResultsPanel
             live={
               displayResult
@@ -560,7 +569,7 @@ export function ExerciseWorkspace({ exercise }: { exercise: Exercise }) {
             matched={validation?.status === "correct"}
           />
 
-          <section className="flex h-[280px] flex-col rounded-xl border border-[color:var(--border-soft)] bg-[color:var(--surface)] p-3 sm:h-[300px] sm:p-4">
+          <section className="flex h-[260px] flex-col rounded-xl border border-[color:var(--border-soft)] bg-[color:var(--surface)] p-3 sm:h-[280px] sm:p-4">
             <div className="mb-2 flex shrink-0 flex-wrap items-center justify-between gap-2">
               <p className="text-sm font-medium text-[color:var(--ink)]">{t("yourSql")}</p>
               <div className="flex flex-wrap items-center gap-1.5">
@@ -590,8 +599,8 @@ export function ExerciseWorkspace({ exercise }: { exercise: Exercise }) {
               </div>
             </div>
 
-            <div className="min-h-0 flex-1">
-              <SqlEditor value={sql} onChange={setSql} schema={schemaMap} height="220px" label="" />
+            <div className="min-h-0 flex-1 overflow-hidden">
+              <SqlEditor value={sql} onChange={setSql} schema={schemaMap} height="200px" label="" />
             </div>
 
             {!isRead ? (
@@ -724,18 +733,20 @@ export function ExerciseWorkspace({ exercise }: { exercise: Exercise }) {
           ) : null}
         </div>
 
-        <TasksSidebar
-          exerciseOrder={exercise.order}
-          tasks={tasks}
-          expectedDescription={localized.expectedResult}
-          onSelectTask={selectTask}
-          showSolutionLink={!solutionReady}
-          onShowSolution={requestSolution}
-          finishEnabled={allTasksDone && Boolean(finishHref)}
-          finishHref={finishHref}
-          onAskHint={revealHint}
-          hintLevel={hintLevel}
-        />
+        <div className="min-w-0 lg:sticky lg:top-24 lg:self-start">
+          <TasksSidebar
+            exerciseOrder={exercise.order}
+            tasks={tasks}
+            expectedDescription={localized.expectedResult}
+            onSelectTask={selectTask}
+            showSolutionLink={!solutionReady}
+            onShowSolution={requestSolution}
+            finishEnabled={allTasksDone && Boolean(finishHref)}
+            finishHref={finishHref}
+            onAskHint={revealHint}
+            hintLevel={hintLevel}
+          />
+        </div>
       </div>
 
       <div className="flex items-center justify-between gap-3 pb-4">

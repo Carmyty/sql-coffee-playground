@@ -41,48 +41,41 @@ export function TasksSidebar({
   const es = locale === "es";
 
   return (
-    <aside className="flex h-full min-h-[28rem] flex-col gap-4 rounded-xl border border-[color:var(--border-soft)] bg-[color:var(--cream)] p-4">
-      <h3 className="font-[family-name:var(--font-display)] text-lg text-[color:var(--ink)]">
+    <aside className="relative z-10 flex w-full flex-col gap-3 rounded-xl border border-[color:var(--border-soft)] bg-[color:var(--surface)] p-3 shadow-sm sm:p-4 lg:min-h-[32rem]">
+      <h3 className="shrink-0 font-[family-name:var(--font-display)] text-base text-[color:var(--ink)] sm:text-lg">
         {es ? `Ejercicio ${exerciseOrder} — Tareas` : `Exercise ${exerciseOrder} — Tasks`}
       </h3>
 
-      <ol className="space-y-3">
+      <ol className="min-h-0 flex-1 space-y-2 overflow-y-auto">
         {tasks.map((task, index) => {
           const clickable = task.state === "active" || task.state === "done";
           return (
-            <li key={task.id}>
+            <li key={task.id} className="block">
               <button
                 type="button"
                 disabled={!clickable}
                 onClick={() => onSelectTask?.(task.id)}
                 className={cn(
-                  "flex w-full gap-2.5 rounded-lg px-1 py-1 text-left text-sm leading-snug transition-colors",
-                  task.state === "active" && "text-[color:var(--ink)]",
-                  task.state === "done" && "text-[color:var(--success)]",
+                  "flex w-full items-start gap-2 rounded-lg px-2 py-2 text-left text-sm leading-relaxed transition-colors",
+                  task.state === "active" &&
+                    "bg-[color:var(--accent-soft)] text-[color:var(--ink)] ring-1 ring-[color:var(--accent)]/30",
+                  task.state === "done" && "bg-[color:var(--success-soft)] text-[color:var(--success)]",
                   task.state === "locked" && "cursor-not-allowed text-[color:var(--muted-text)]/70",
-                  clickable && "hover:bg-[color:var(--surface)]/60"
+                  clickable && task.state !== "active" && "hover:bg-[color:var(--cream)]"
                 )}
               >
                 <span className="mt-0.5 shrink-0">
                   {task.state === "done" ? (
-                    <CheckCircle2 className="size-4 check-burst" />
+                    <CheckCircle2 className="size-4" />
                   ) : task.state === "locked" ? (
                     <Lock className="size-3.5 opacity-60" />
                   ) : (
                     <Circle className="size-4 text-[color:var(--accent)]" />
                   )}
                 </span>
-                <span>
+                <span className="min-w-0 flex-1 break-words [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:4] overflow-hidden">
                   <span className="font-semibold tabular-nums">{index + 1}. </span>
-                  <span
-                    className={
-                      task.state === "active"
-                        ? "underline decoration-[color:var(--accent)]/40 decoration-2 underline-offset-2"
-                        : undefined
-                    }
-                  >
-                    {task.label}
-                  </span>
+                  {task.label}
                 </span>
               </button>
             </li>
@@ -91,35 +84,38 @@ export function TasksSidebar({
       </ol>
 
       {expectedDescription ? (
-        <div className="rounded-lg border border-dashed border-[color:var(--border-soft)] bg-[color:var(--surface)] p-3">
+        <div className="shrink-0 rounded-lg border border-dashed border-[color:var(--border-soft)] bg-[color:var(--cream)]/60 p-3">
           <p className="mb-1 text-[0.65rem] font-semibold uppercase tracking-[0.12em] text-[color:var(--muted-text)]">
             {t("expectedResult")}
           </p>
-          <p className="text-sm text-[color:var(--ink)]">{expectedDescription}</p>
+          <p className="text-sm leading-relaxed break-words text-[color:var(--ink)]">
+            {expectedDescription}
+          </p>
         </div>
       ) : null}
 
-      <div className="mt-auto space-y-3 border-t border-[color:var(--border-soft)] pt-3">
-        {onAskHint ? (
-          <button
-            type="button"
-            onClick={onAskHint}
-            disabled={hintLevel >= 3}
-            className="text-left text-sm text-[color:var(--accent)] underline-offset-2 hover:underline disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            {es ? `Pista (${hintLevel}/3)` : `Hint (${hintLevel}/3)`}
-          </button>
-        ) : null}
-
-        {showSolutionLink ? (
-          <button
-            type="button"
-            onClick={onShowSolution}
-            className="block text-left text-sm text-[color:var(--accent)] underline-offset-2 hover:underline"
-          >
-            {es ? "Ver solución" : "Show solution"}
-          </button>
-        ) : null}
+      <div className="flex shrink-0 flex-col gap-2 border-t border-[color:var(--border-soft)] pt-3">
+        <div className="flex flex-wrap gap-x-3 gap-y-1">
+          {onAskHint ? (
+            <button
+              type="button"
+              onClick={onAskHint}
+              disabled={hintLevel >= 3}
+              className="text-sm text-[color:var(--accent)] underline-offset-2 hover:underline disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {es ? `Pista (${hintLevel}/3)` : `Hint (${hintLevel}/3)`}
+            </button>
+          ) : null}
+          {showSolutionLink ? (
+            <button
+              type="button"
+              onClick={onShowSolution}
+              className="text-sm text-[color:var(--accent)] underline-offset-2 hover:underline"
+            >
+              {es ? "Ver solución" : "Show solution"}
+            </button>
+          ) : null}
+        </div>
 
         {finishEnabled && finishHref ? (
           <Link

@@ -57,14 +57,14 @@ export function AppNavbar({ title }: { title?: string }) {
 
   return (
     <>
-      <header className="sticky top-0 z-40 border-b border-[color:var(--border-soft)] bg-[color:var(--surface)]/95 pt-[env(safe-area-inset-top)] backdrop-blur">
-        <div className="mx-auto flex max-w-[1600px] flex-wrap items-center gap-2 px-3 py-2.5 sm:px-4 md:px-6">
-          <Link href="/" className="mr-1 flex shrink-0 items-center gap-2">
-            <div className="flex size-9 items-center justify-center rounded-2xl bg-[color:var(--accent-soft)]">
-              <Coffee className="size-4.5 text-[color:var(--accent)]" />
+      <header className="sticky top-0 z-40 overflow-x-hidden border-b border-[color:var(--border-soft)] bg-[color:var(--surface)] pt-[env(safe-area-inset-top)]">
+        <div className="mx-auto flex max-w-[1600px] items-center gap-2 px-3 py-2 sm:px-4 md:px-6">
+          <Link href="/" className="flex shrink-0 items-center gap-2">
+            <div className="flex size-8 items-center justify-center rounded-xl bg-[color:var(--accent-soft)] sm:size-9 sm:rounded-2xl">
+              <Coffee className="size-4 text-[color:var(--accent)]" />
             </div>
-            <div className="hidden leading-tight sm:block">
-              <p className="font-[family-name:var(--font-display)] text-base text-[color:var(--ink)]">
+            <div className="hidden leading-tight xl:block">
+              <p className="font-[family-name:var(--font-display)] text-sm text-[color:var(--ink)]">
                 SQL Coffee
               </p>
               <p className="text-[10px] text-[color:var(--muted-text)]">Playground</p>
@@ -72,7 +72,7 @@ export function AppNavbar({ title }: { title?: string }) {
           </Link>
 
           <nav
-            className="hidden min-w-0 flex-1 items-center gap-1 overflow-x-auto lg:flex"
+            className="hidden min-w-0 flex-1 items-center justify-center gap-0.5 lg:flex xl:gap-1"
             aria-label="Principal"
           >
             {links.map((link) => {
@@ -83,58 +83,60 @@ export function AppNavbar({ title }: { title?: string }) {
                   key={link.href}
                   href={link.href}
                   aria-current={active ? "page" : undefined}
+                  title={t(link.labelKey)}
                   className={cn(
-                    "inline-flex shrink-0 items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-sm font-medium transition-colors",
+                    "inline-flex max-w-[9.5rem] items-center gap-1 rounded-lg px-2 py-1.5 text-xs font-medium transition-colors xl:max-w-none xl:gap-1.5 xl:px-2.5 xl:text-sm",
                     active
-                      ? "bg-[color:var(--accent)] text-[color:var(--primary-foreground)] shadow-sm"
+                      ? "bg-[color:var(--accent)] text-[color:var(--primary-foreground)]"
                       : "text-[color:var(--ink)]/80 hover:bg-[color:var(--cream)]"
                   )}
                 >
                   <Icon className="size-3.5 shrink-0" aria-hidden />
-                  {t(link.labelKey)}
+                  <span className="truncate xl:hidden">{t(link.shortKey)}</span>
+                  <span className="hidden truncate xl:inline">{t(link.labelKey)}</span>
                 </Link>
               );
             })}
           </nav>
 
-          <div className="ml-auto flex shrink-0 items-center gap-2">
+          <div className="ml-auto flex shrink-0 items-center gap-1.5 sm:gap-2">
             <div
-              className="inline-flex min-h-9 items-center gap-1.5 rounded-full bg-[color:var(--cream)] px-2.5 py-1 text-sm text-[color:var(--ink)]"
+              className="inline-flex h-8 items-center gap-1 rounded-full bg-[color:var(--cream)] px-2 text-xs text-[color:var(--ink)] sm:h-9 sm:px-2.5 sm:text-sm"
               title={locale === "es" ? "Racha de días activos" : "Active day streak"}
             >
-              <Flame className="size-4 text-[color:var(--accent)]" aria-hidden />
+              <Flame className="size-3.5 text-[color:var(--accent)] sm:size-4" aria-hidden />
               <span className="tabular-nums">{state.streak}</span>
-              <span className="hidden sm:inline">{t("streakDays")}</span>
+              <span className="hidden md:inline">{t("streakDays")}</span>
             </div>
             <Button
               type="button"
               variant="outline"
               size="sm"
-              className="pressable h-9 min-w-9 gap-1.5 border-[color:var(--border-soft)] px-2.5"
+              className="pressable h-8 gap-1 border-[color:var(--border-soft)] px-2 sm:h-9 sm:px-2.5"
               aria-label={locale === "es" ? t("languageToEn") : t("languageToEs")}
               title={locale === "es" ? t("languageToEn") : t("languageToEs")}
               onClick={toggleLocale}
             >
-              <Languages className="size-4" />
+              <Languages className="size-3.5 sm:size-4" />
               <span className="text-xs font-semibold tabular-nums">{locale === "es" ? "ES" : "EN"}</span>
             </Button>
             <Button
               type="button"
               variant="outline"
               size="icon"
-              className="size-9 border-[color:var(--border-soft)]"
+              className="size-8 border-[color:var(--border-soft)] sm:size-9"
               aria-label={isDark ? t("themeToLight") : t("themeToDark")}
               disabled={!mounted}
               onClick={() => setTheme(isDark ? "light" : "dark")}
             >
-              {isDark ? <Moon className="size-4" /> : <Sun className="size-4" />}
+              {isDark ? <Moon className="size-3.5 sm:size-4" /> : <Sun className="size-3.5 sm:size-4" />}
             </Button>
           </div>
         </div>
 
-        <div className="mx-auto max-w-[1600px] px-3 pb-2.5 sm:px-4 md:px-6">
+        <div className="mx-auto max-w-[1600px] px-3 pb-2 sm:px-4 md:px-6">
           <div className="mb-1 flex items-center justify-between gap-3 text-xs text-[color:var(--muted-text)]">
-            <span className="truncate font-[family-name:var(--font-display)] text-sm text-[color:var(--ink)] sm:text-base">
+            <span className="min-w-0 truncate font-[family-name:var(--font-display)] text-sm text-[color:var(--ink)]">
               {title || t("defaultTitle")}
             </span>
             <span className="shrink-0 tabular-nums">
@@ -159,12 +161,12 @@ export function AppNavbar({ title }: { title?: string }) {
                 href={link.href}
                 aria-current={active ? "page" : undefined}
                 className={cn(
-                  "flex min-h-14 min-w-0 flex-1 flex-col items-center justify-center gap-1 px-1 text-[11px] font-medium",
+                  "flex min-h-14 min-w-0 flex-1 flex-col items-center justify-center gap-1 px-0.5 text-[10px] font-medium sm:text-[11px]",
                   active ? "text-[color:var(--accent)]" : "text-[color:var(--muted-text)]"
                 )}
               >
                 <Icon className="size-4 shrink-0" aria-hidden />
-                <span className="truncate">{t(link.shortKey)}</span>
+                <span className="max-w-full truncate px-0.5">{t(link.shortKey)}</span>
               </Link>
             );
           })}

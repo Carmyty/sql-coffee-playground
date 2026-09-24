@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { ResultsTable } from "@/components/exercise/results-table";
 import { useLanguage } from "@/hooks/use-language";
+import { cn } from "@/lib/utils";
 
 type PreviewPayload = {
   ok?: boolean;
@@ -65,18 +66,21 @@ export function ReferenceTables({ tables }: ReferenceTablesProps) {
   }
 
   return (
-    <div className={names.length > 1 ? "grid gap-3 md:grid-cols-2" : "grid gap-3"}>
+    <div className={cn(
+      "grid w-full min-w-0 gap-3",
+      names.length > 1 && "md:grid-cols-2"
+    )}>
       {names.map((table) => {
         const preview = previews[table];
         return (
           <section
             key={table}
-            className="flex h-[160px] flex-col rounded-xl border border-[color:var(--border-soft)] bg-[color:var(--surface)] p-3"
+            className="flex h-[150px] min-w-0 flex-col overflow-hidden rounded-xl border border-[color:var(--border-soft)] bg-[color:var(--surface)] p-3 sm:h-[160px]"
           >
-            <p className="mb-2 shrink-0 text-sm font-semibold text-[color:var(--ink)]">
+            <p className="mb-2 shrink-0 truncate text-sm font-semibold text-[color:var(--ink)]">
               {es ? "Tabla" : "Table"}: {table}
             </p>
-            <div className="min-h-0 flex-1 overflow-auto rounded-lg border border-[color:var(--border-soft)]">
+            <div className="min-h-0 min-w-0 flex-1 overflow-auto rounded-lg border border-[color:var(--border-soft)]">
               <ResultsTable columns={preview.columns} rows={preview.rows} compact />
             </div>
           </section>

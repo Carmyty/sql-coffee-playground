@@ -34,7 +34,7 @@ export function QueryResultsPanel({
   return (
     <section
       className={cn(
-        "flex h-[280px] flex-col rounded-xl border p-3 sm:h-[300px] sm:p-4",
+        "flex h-[240px] min-w-0 flex-col overflow-hidden rounded-xl border p-3 sm:h-[280px] sm:p-4",
         matched
           ? "border-[color:var(--success)]/50 bg-[color:var(--success-soft)]"
           : "border-[color:var(--border-soft)] bg-[color:var(--surface)]"

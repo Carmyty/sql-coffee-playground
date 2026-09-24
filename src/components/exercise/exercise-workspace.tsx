@@ -25,7 +25,7 @@ import { localizeModule } from "@/lib/i18n/modules-en";
 import { CompletionBanner } from "@/components/exercise/completion-banner";
 import { QueryResultsPanel } from "@/components/exercise/query-results-panel";
 import { ReferenceTables } from "@/components/exercise/reference-tables";
-import { TasksNavbar, type TaskItem } from "@/components/exercise/tasks-navbar";
+import { TasksSidebar, type TaskItem } from "@/components/exercise/tasks-sidebar";
 import { SqlEditor } from "@/components/editor/sql-editor";
 import { useProgress } from "@/hooks/use-progress";
 import { useLanguage } from "@/hooks/use-language";
@@ -36,6 +36,15 @@ import { cn } from "@/lib/utils";
 import { isLikelySelect } from "@/lib/tsql/translate";
 
 const TASK_WINDOW = 4;
+
+function initialSql(raw: string | undefined, starter: string) {
+  const value = (raw ?? starter ?? "").trim();
+  const withoutComments = value
+    .replace(/\/\*[\s\S]*?\*\//g, "")
+    .replace(/--[^\n]*/g, "")
+    .trim();
+  return withoutComments ? value : "";
+}
 
 type SchemaPayload = {
   ok: boolean;
@@ -97,7 +106,7 @@ export function ExerciseWorkspace({ exercise }: { exercise: Exercise }) {
   );
   const progress = getExercise(activeExercise.id);
 
-  const [sql, setSql] = useState(progress.lastSql || activeExercise.starterSql);
+  const [sql, setSql] = useState(() => initialSql(progress.lastSql, activeExercise.starterSql));
   const [hintLevel, setHintLevel] = useState(progress.hintsUsed);
   const [schemaMap, setSchemaMap] = useState<Record<string, string[]>>({});
   const [busy, setBusy] = useState(false);
@@ -181,7 +190,7 @@ export function ExerciseWorkspace({ exercise }: { exercise: Exercise }) {
 
   useEffect(() => {
     const p = getExercise(activeExercise.id);
-    setSql(p.lastSql || activeExercise.starterSql);
+    setSql(initialSql(p.lastSql, activeExercise.starterSql));
     setHintLevel(p.hintsUsed);
     setShowCompletion(false);
     setValidation(undefined);
@@ -193,7 +202,7 @@ export function ExerciseWorkspace({ exercise }: { exercise: Exercise }) {
     setLiveError(null);
     setShowHintsPanel(false);
     lastRecordedKey.current = "";
-    recordVisit(activeExercise.id, p.lastSql || activeExercise.starterSql);
+    recordVisit(activeExercise.id, initialSql(p.lastSql, activeExercise.starterSql));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeExercise.id]);
 
@@ -529,201 +538,205 @@ export function ExerciseWorkspace({ exercise }: { exercise: Exercise }) {
         )}
       </div>
 
-      <TasksNavbar
-        exerciseOrder={exercise.order}
-        tasks={tasks}
-        expectedDescription={localized.expectedResult}
-        onSelectTask={selectTask}
-        showSolutionLink={!solutionReady}
-        onShowSolution={requestSolution}
-        finishEnabled={allTasksDone && Boolean(finishHref)}
-        finishHref={finishHref}
-        onAskHint={revealHint}
-        hintLevel={hintLevel}
-      />
-
-      {isRead && activeExercise.suggestedTables.length > 0 ? (
-        <ReferenceTables tables={activeExercise.suggestedTables} />
-      ) : null}
-
-      <QueryResultsPanel
-        live={
-          displayResult
-            ? {
-                columns: displayResult.columns,
-                rows: displayResult.rows,
-                rowCount: displayResult.rowCount,
-                executionMs: displayResult.executionMs,
-              }
-            : null
-        }
-        liveError={liveError || result?.error?.beginnerHint || null}
-        liveBusy={liveBusy}
-        matched={validation?.status === "correct"}
-      />
-
-      <section className="flex h-[260px] flex-col rounded-xl border border-[color:var(--border-soft)] bg-[color:var(--surface)] p-3 sm:h-[280px] sm:p-4">
-        <div className="mb-2 flex shrink-0 flex-wrap items-center justify-between gap-2">
-          <p className="text-sm font-medium text-[color:var(--ink)]">{t("yourSql")}</p>
-          <div className="flex flex-wrap items-center gap-1.5">
-            <Button variant="ghost" size="sm" className="pressable h-8 px-2 text-xs" onClick={formatSql}>
-              {t("format")}
-            </Button>
-            <button
-              type="button"
-              onClick={resetEditor}
-              className="inline-flex h-8 items-center gap-1 px-2 text-xs font-semibold uppercase tracking-wide text-[color:var(--muted-text)] hover:text-[color:var(--ink)]"
-            >
-              <Eraser className="size-3.5" />
-              Reset
-            </button>
-            {!isRead ? (
-              <Button
-                variant="ghost"
-                size="sm"
-                className="pressable h-8 px-2 text-xs"
-                onClick={resetSandbox}
-                disabled={busy}
-              >
-                <RotateCcw className="size-3.5" />
-                {t("resetSandbox")}
-              </Button>
-            ) : null}
-          </div>
-        </div>
-
-        <div className="min-h-0 flex-1 overflow-hidden [&_textarea]:!min-h-0 [&_textarea]:!h-full">
-          <SqlEditor value={sql} onChange={setSql} schema={schemaMap} height="200px" label="" />
-        </div>
-
-        {!isRead ? (
-          <div className="mt-2 flex shrink-0 flex-col gap-2 sm:flex-row sm:flex-wrap">
-            <Button
-              className="pressable max-sm:min-h-12 max-sm:w-full bg-[color:var(--accent)] text-[color:var(--primary-foreground)] hover:bg-[color:var(--accent)]/90"
-              size="lg"
-              onClick={() => runQuery(false)}
-              disabled={busy}
-            >
-              <Play className="size-4" />
-              {busy ? t("running") : t("checkQuery")}
-            </Button>
-            {pendingConfirm ? (
-              <Button
-                variant="destructive"
-                className="pressable max-sm:w-full"
-                onClick={() => runQuery(true)}
-                disabled={busy}
-              >
-                <AlertTriangle className="size-4" />
-                {t("confirmMutation")}
-              </Button>
-            ) : null}
-            <Button
-              variant="secondary"
-              className="pressable max-sm:w-full"
-              onClick={explainQuery}
-              disabled={!sql.trim()}
-            >
-              <Sparkles className="size-4" />
-              {t("explainQuery")}
-            </Button>
-          </div>
-        ) : null}
-      </section>
-
-      {validation && validation.status !== "correct" ? (
-        <Alert className="animate-pop-in border-[color:var(--border-soft)] bg-[color:var(--surface)]">
-          <AlertTitle className="text-[color:var(--ink)]">{validation.message}</AlertTitle>
-          <AlertDescription>{validation.explanation}</AlertDescription>
-        </Alert>
-      ) : null}
-
-      {validation?.status === "correct" ? (
-        <Alert className="animate-pop-in border-[color:var(--success)]/40 bg-[color:var(--success-soft)]">
-          <CheckCircle2 className="check-burst size-4 text-[color:var(--success)]" />
-          <AlertTitle className="text-[color:var(--ink)]">{validation.message}</AlertTitle>
-          <AlertDescription>{validation.explanation}</AlertDescription>
-        </Alert>
-      ) : null}
-
-      {explainText ? (
-        <Alert className="bg-[color:var(--surface)]">
-          <AlertTitle>{t("explanation")}</AlertTitle>
-          <AlertDescription className="whitespace-pre-wrap">{explainText}</AlertDescription>
-        </Alert>
-      ) : null}
-
-      {result?.warning ? (
-        <Alert className="bg-[color:var(--surface)]">
-          <AlertTriangle className="size-4" />
-          <AlertTitle>{t("impactWarning")}</AlertTitle>
-          <AlertDescription>
-            {result.warning.message}
-            {result.warning.estimatedRows !== undefined
-              ? ` ${t("estimatedRows")}: ${result.warning.estimatedRows}.`
-              : ""}
-          </AlertDescription>
-        </Alert>
-      ) : null}
-
-      {showHintsPanel || hintLevel > 0 || solutionReady ? (
-        <section className="space-y-3 rounded-xl border border-[color:var(--border-soft)] bg-[color:var(--surface)] p-4">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <p className="font-medium text-[color:var(--ink)]">{t("help")}</p>
-            <Button
-              variant="outline"
-              size="sm"
-              className="pressable"
-              onClick={revealHint}
-              disabled={hintLevel >= 3}
-            >
-              <Lightbulb className="size-4" />
-              {t("askHint")} {hintLevel}/3
-            </Button>
-          </div>
-          {hintLevel >= 1 ? (
-            <Alert>
-              <AlertTitle>
-                {t("hint")} 1
-              </AlertTitle>
-              <AlertDescription>{localized.hints[0]}</AlertDescription>
-            </Alert>
-          ) : null}
-          {hintLevel >= 2 ? (
-            <Alert>
-              <AlertTitle>
-                {t("hint")} 2
-              </AlertTitle>
-              <AlertDescription className="font-mono text-xs">{localized.hints[1]}</AlertDescription>
-            </Alert>
-          ) : null}
-          {hintLevel >= 3 ? (
-            <Alert>
-              <AlertTitle>
-                {t("hint")} 3
-              </AlertTitle>
-              <AlertDescription>{localized.hints[2]}</AlertDescription>
-            </Alert>
+      <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(16rem,20rem)]">
+        <div className="flex min-w-0 flex-col gap-3">
+          {isRead && activeExercise.suggestedTables.length > 0 ? (
+            <ReferenceTables tables={activeExercise.suggestedTables} />
           ) : null}
 
-          {solutionReady ? (
-            <div className="animate-fade-up space-y-3 border-t border-[color:var(--border-soft)] pt-3">
-              <p className="font-medium text-[color:var(--ink)]">{t("referenceSolution")}</p>
-              <pre className="overflow-x-auto whitespace-pre-wrap break-words rounded-xl bg-[color:var(--ink)] p-3 text-xs text-[color:var(--page-bg)]">
-                {(reference?.sql || activeExercise.referenceSql).trim()}
-              </pre>
-              <ul className="space-y-2">
-                {(reference?.explanation || localized.referenceExplanation).map((item) => (
-                  <li key={item.clause} className="rounded-xl bg-[color:var(--cream)] p-3">
-                    <p className="font-medium text-[color:var(--ink)]">{item.clause}</p>
-                    <p className="text-sm text-[color:var(--muted-text)]">{item.text}</p>
-                  </li>
-                ))}
-              </ul>
+          <QueryResultsPanel
+            live={
+              displayResult
+                ? {
+                    columns: displayResult.columns,
+                    rows: displayResult.rows,
+                    rowCount: displayResult.rowCount,
+                    executionMs: displayResult.executionMs,
+                  }
+                : null
+            }
+            liveError={liveError || result?.error?.beginnerHint || null}
+            liveBusy={liveBusy}
+            matched={validation?.status === "correct"}
+          />
+
+          <section className="flex h-[280px] flex-col rounded-xl border border-[color:var(--border-soft)] bg-[color:var(--surface)] p-3 sm:h-[300px] sm:p-4">
+            <div className="mb-2 flex shrink-0 flex-wrap items-center justify-between gap-2">
+              <p className="text-sm font-medium text-[color:var(--ink)]">{t("yourSql")}</p>
+              <div className="flex flex-wrap items-center gap-1.5">
+                <Button variant="ghost" size="sm" className="pressable h-8 px-2 text-xs" onClick={formatSql}>
+                  {t("format")}
+                </Button>
+                <button
+                  type="button"
+                  onClick={resetEditor}
+                  className="inline-flex h-8 items-center gap-1 px-2 text-xs font-semibold uppercase tracking-wide text-[color:var(--muted-text)] hover:text-[color:var(--ink)]"
+                >
+                  <Eraser className="size-3.5" />
+                  Reset
+                </button>
+                {!isRead ? (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="pressable h-8 px-2 text-xs"
+                    onClick={resetSandbox}
+                    disabled={busy}
+                  >
+                    <RotateCcw className="size-3.5" />
+                    {t("resetSandbox")}
+                  </Button>
+                ) : null}
+              </div>
             </div>
+
+            <div className="min-h-0 flex-1">
+              <SqlEditor value={sql} onChange={setSql} schema={schemaMap} height="220px" label="" />
+            </div>
+
+            {!isRead ? (
+              <div className="mt-2 flex shrink-0 flex-col gap-2 sm:flex-row sm:flex-wrap">
+                <Button
+                  className="pressable max-sm:min-h-12 max-sm:w-full bg-[color:var(--accent)] text-[color:var(--primary-foreground)] hover:bg-[color:var(--accent)]/90"
+                  size="lg"
+                  onClick={() => runQuery(false)}
+                  disabled={busy}
+                >
+                  <Play className="size-4" />
+                  {busy ? t("running") : t("checkQuery")}
+                </Button>
+                {pendingConfirm ? (
+                  <Button
+                    variant="destructive"
+                    className="pressable max-sm:w-full"
+                    onClick={() => runQuery(true)}
+                    disabled={busy}
+                  >
+                    <AlertTriangle className="size-4" />
+                    {t("confirmMutation")}
+                  </Button>
+                ) : null}
+                <Button
+                  variant="secondary"
+                  className="pressable max-sm:w-full"
+                  onClick={explainQuery}
+                  disabled={!sql.trim()}
+                >
+                  <Sparkles className="size-4" />
+                  {t("explainQuery")}
+                </Button>
+              </div>
+            ) : null}
+          </section>
+
+          {validation && validation.status !== "correct" ? (
+            <Alert className="animate-pop-in border-[color:var(--border-soft)] bg-[color:var(--surface)]">
+              <AlertTitle className="text-[color:var(--ink)]">{validation.message}</AlertTitle>
+              <AlertDescription>{validation.explanation}</AlertDescription>
+            </Alert>
           ) : null}
-        </section>
-      ) : null}
+
+          {validation?.status === "correct" ? (
+            <Alert className="animate-pop-in border-[color:var(--success)]/40 bg-[color:var(--success-soft)]">
+              <CheckCircle2 className="check-burst size-4 text-[color:var(--success)]" />
+              <AlertTitle className="text-[color:var(--ink)]">{validation.message}</AlertTitle>
+              <AlertDescription>{validation.explanation}</AlertDescription>
+            </Alert>
+          ) : null}
+
+          {explainText ? (
+            <Alert className="bg-[color:var(--surface)]">
+              <AlertTitle>{t("explanation")}</AlertTitle>
+              <AlertDescription className="whitespace-pre-wrap">{explainText}</AlertDescription>
+            </Alert>
+          ) : null}
+
+          {result?.warning ? (
+            <Alert className="bg-[color:var(--surface)]">
+              <AlertTriangle className="size-4" />
+              <AlertTitle>{t("impactWarning")}</AlertTitle>
+              <AlertDescription>
+                {result.warning.message}
+                {result.warning.estimatedRows !== undefined
+                  ? ` ${t("estimatedRows")}: ${result.warning.estimatedRows}.`
+                  : ""}
+              </AlertDescription>
+            </Alert>
+          ) : null}
+
+          {showHintsPanel || hintLevel > 0 || solutionReady ? (
+            <section className="space-y-3 rounded-xl border border-[color:var(--border-soft)] bg-[color:var(--surface)] p-4">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <p className="font-medium text-[color:var(--ink)]">{t("help")}</p>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="pressable"
+                  onClick={revealHint}
+                  disabled={hintLevel >= 3}
+                >
+                  <Lightbulb className="size-4" />
+                  {t("askHint")} {hintLevel}/3
+                </Button>
+              </div>
+              {hintLevel >= 1 ? (
+                <Alert>
+                  <AlertTitle>
+                    {t("hint")} 1
+                  </AlertTitle>
+                  <AlertDescription>{localized.hints[0]}</AlertDescription>
+                </Alert>
+              ) : null}
+              {hintLevel >= 2 ? (
+                <Alert>
+                  <AlertTitle>
+                    {t("hint")} 2
+                  </AlertTitle>
+                  <AlertDescription className="font-mono text-xs">{localized.hints[1]}</AlertDescription>
+                </Alert>
+              ) : null}
+              {hintLevel >= 3 ? (
+                <Alert>
+                  <AlertTitle>
+                    {t("hint")} 3
+                  </AlertTitle>
+                  <AlertDescription>{localized.hints[2]}</AlertDescription>
+                </Alert>
+              ) : null}
+
+              {solutionReady ? (
+                <div className="animate-fade-up space-y-3 border-t border-[color:var(--border-soft)] pt-3">
+                  <p className="font-medium text-[color:var(--ink)]">{t("referenceSolution")}</p>
+                  <pre className="overflow-x-auto whitespace-pre-wrap break-words rounded-xl bg-[color:var(--ink)] p-3 text-xs text-[color:var(--page-bg)]">
+                    {(reference?.sql || activeExercise.referenceSql).trim()}
+                  </pre>
+                  <ul className="space-y-2">
+                    {(reference?.explanation || localized.referenceExplanation).map((item) => (
+                      <li key={item.clause} className="rounded-xl bg-[color:var(--cream)] p-3">
+                        <p className="font-medium text-[color:var(--ink)]">{item.clause}</p>
+                        <p className="text-sm text-[color:var(--muted-text)]">{item.text}</p>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
+            </section>
+          ) : null}
+        </div>
+
+        <TasksSidebar
+          exerciseOrder={exercise.order}
+          tasks={tasks}
+          expectedDescription={localized.expectedResult}
+          onSelectTask={selectTask}
+          showSolutionLink={!solutionReady}
+          onShowSolution={requestSolution}
+          finishEnabled={allTasksDone && Boolean(finishHref)}
+          finishHref={finishHref}
+          onAskHint={revealHint}
+          hintLevel={hintLevel}
+        />
+      </div>
 
       <div className="flex items-center justify-between gap-3 pb-4">
         {previous ? (

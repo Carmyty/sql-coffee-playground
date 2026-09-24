@@ -30,7 +30,7 @@ export const EXERCISES: Exercise[] = [
       { clause: "SELECT *", text: "El asterisco pide todas las columnas disponibles." },
       { clause: "FROM customers", text: "Indica que las filas salen de la tabla de clientes." },
     ],
-    starterSql: "-- Explora la tabla de clientes\n",
+    starterSql: "",
     environment: "read",
     validation: {
       matchMode: "set",
@@ -63,7 +63,7 @@ export const EXERCISES: Exercise[] = [
       { clause: "SELECT first_name, last_name, email", text: "Pedimos tres columnas concretas, no el resto." },
       { clause: "FROM customers", text: "Seguimos leyendo la tabla de clientes." },
     ],
-    starterSql: "SELECT \nFROM customers;",
+    starterSql: "",
     environment: "read",
     validation: {
       matchMode: "set",
@@ -95,7 +95,7 @@ export const EXERCISES: Exercise[] = [
     referenceExplanation: [
       { clause: "AS nombre / AS correo", text: "Cambia el encabezado del resultado. No altera customers." },
     ],
-    starterSql: "SELECT first_name, email FROM customers;",
+    starterSql: "",
     environment: "read",
     validation: { matchMode: "exists", requiredKeywords: ["as"], requiredColumns: ["correo"], minRows: 1 },
     unlockAfterAttempts: 2,
@@ -152,7 +152,7 @@ export const EXERCISES: Exercise[] = [
     referenceExplanation: [
       { clause: "ORDER BY name", text: "PostgreSQL ordena texto alfabéticamente. ASC se asume si no lo escribes." },
     ],
-    starterSql: "SELECT name, price FROM menu_items\n",
+    starterSql: "",
     environment: "read",
     validation: {
       matchMode: "ordered",
@@ -271,7 +271,7 @@ export const EXERCISES: Exercise[] = [
     ],
     referenceSql: "SELECT name, price FROM menu_items WHERE price > 50",
     referenceExplanation: [{ clause: "WHERE price > 50", text: "Se evalúa fila por fila antes de devolver el resultado." }],
-    starterSql: "SELECT name, price FROM menu_items\n",
+    starterSql: "",
     environment: "read",
     validation: {
       matchMode: "set",

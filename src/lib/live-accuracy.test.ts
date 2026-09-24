@@ -46,7 +46,7 @@ describe("scoreLiveAccuracy", () => {
       environment: "read" as const,
       validation: { requiredKeywords: ["select", "from"], matchMode: "exists" as const },
     };
-    const good = scoreLiveAccuracy("SELECT name, city FROM stores LIMIT 10", lab);
+    const good = scoreLiveAccuracy("SELECT TOP 10 name, city FROM stores", lab);
     const bad = scoreLiveAccuracy("SELECT 1", lab);
     expect(good.tone).toBe("green");
     expect(bad.score).toBeLessThan(good.score);

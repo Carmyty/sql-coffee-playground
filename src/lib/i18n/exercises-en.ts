@@ -163,12 +163,12 @@ const EN: Record<string, ExerciseLocaleFields> = {
     expectedResult: "Names like Frappe de café or Limonada de café.",
     hints: [
       "LIKE with % matches a substring.",
-      "WHERE name ILIKE '%café%'",
+      "WHERE name LIKE '%café%'",
       "Use a pattern search on the product name.",
     ],
     reasoningChecklist: ["Which table holds the data?", "Do you need to filter rows with WHERE?"],
     referenceExplanation: [
-      { clause: "ILIKE '%café%'", text: "Case-insensitive substring match." },
+      { clause: "LIKE '%café%'", text: "Case-insensitive substring match." },
     ],
   },
   "in-categories": {
@@ -247,28 +247,28 @@ const EN: Record<string, ExerciseLocaleFields> = {
     objective: "Show the 10 newest orders first.",
     expectedResult: "10 rows, most recent date on top.",
     hints: [
-      "ORDER BY date DESC plus LIMIT 10.",
-      "SELECT … FROM orders ORDER BY ordered_at DESC LIMIT 10;",
+      "ORDER BY date DESC plus TOP 10.",
+      "SELECT … FROM orders ORDER BY ordered_at DESC TOP 10;",
       "Sort descending by date and limit to 10.",
     ],
     reasoningChecklist: ["Which table holds the data?", "How should the rows be ordered?"],
     referenceExplanation: [
       { clause: "ORDER BY … DESC", text: "Newest first." },
-      { clause: "LIMIT 10", text: "Only ten rows." },
+      { clause: "TOP 10", text: "Only ten rows." },
     ],
   },
   "limit-only": {
-    title: "Try with LIMIT",
+    title: "Try with TOP",
     objective: "When exploring, you do not need the whole table. Bring only 5 products.",
     expectedResult: "Exactly 5 rows from menu_items.",
     hints: [
-      "LIMIT caps how many rows you get.",
-      "SELECT * FROM menu_items LIMIT 5;",
+      "TOP caps how many rows you get.",
+      "SELECT * FROM menu_items TOP 5;",
       "Take five rows from menu_items.",
     ],
     reasoningChecklist: ["Which table holds the data?", "Do you need to limit the result size?"],
     referenceExplanation: [
-      { clause: "LIMIT 5", text: "Returns at most five rows." },
+      { clause: "TOP 5", text: "Returns at most five rows." },
     ],
   },
   "order-multi": {
@@ -815,13 +815,13 @@ const EN: Record<string, ExerciseLocaleFields> = {
     objective: "The 10 customers who spent the most, with their total, ordered high to low.",
     expectedResult: "At most 10 rows, Ana or other frequent buyers on top if the seed supports it.",
     hints: [
-      "Aggregate spend, ORDER BY DESC, LIMIT 10.",
+      "Aggregate spend, ORDER BY DESC, TOP 10.",
       "SUM(quantity * unit_price) per customer",
       "Join customers with their order lines.",
     ],
     reasoningChecklist: ["Do you need to group with GROUP BY?", "How should the rows be ordered?"],
     referenceExplanation: [
-      { clause: "ORDER BY total DESC LIMIT 10", text: "Top spenders only." },
+      { clause: "ORDER BY total DESC TOP 10", text: "Top spenders only." },
     ],
   },
   "top-products-revenue": {

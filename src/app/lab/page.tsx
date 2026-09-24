@@ -20,7 +20,7 @@ const HISTORY_KEY = "sql-coffee-lab-history-v1";
 
 export default function LabPage() {
   const { locale, t } = useLanguage();
-  const [sql, setSql] = useState("SELECT name, city FROM stores LIMIT 10;");
+  const [sql, setSql] = useState("SELECT TOP 10 name, city FROM stores;");
   const [mode, setMode] = useState<"read" | "sandbox">("read");
   const [schemaMap, setSchemaMap] = useState<Record<string, string[]>>({});
   const [busy, setBusy] = useState(false);
@@ -176,7 +176,7 @@ export default function LabPage() {
               className="max-sm:w-full"
               onClick={() => {
                 try {
-                  setSql(format(sql, { language: "postgresql" }));
+                  setSql(format(sql, { language: "tsql" }));
                 } catch {
                   setExplainText(t("formatFail"));
                 }

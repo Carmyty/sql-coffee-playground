@@ -21,7 +21,7 @@ export const LEARNING_MODULES: LearningModule[] = [
     id: "orden",
     order: 3,
     title: "Ordenamiento y resultados limitados",
-    description: "Ordena rankings y recorta el resultado con ORDER BY y LIMIT.",
+    description: "Ordena rankings y recorta el resultado con ORDER BY y TOP (T-SQL).",
     prerequisites: ["fundamentos"],
     estimatedMinutes: 20,
   },

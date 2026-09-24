@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { CheckCircle2 } from "lucide-react";
 import type { Exercise, LearningModule } from "@/data/types";
 import { AppShell } from "@/components/layout/app-shell";
 import { Badge } from "@/components/ui/badge";
@@ -8,8 +9,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { ModuleProgress } from "@/components/learn/module-progress";
 import { ExerciseStatusBadge } from "@/components/learn/exercise-status-badge";
 import { useLanguage } from "@/hooks/use-language";
+import { useProgress } from "@/hooks/use-progress";
 import { localizeModule } from "@/lib/i18n/modules-en";
 import { localizeExercise } from "@/lib/i18n/exercises-en";
+import { cn } from "@/lib/utils";
 
 export function ModulePageClient({
   learningModule,
@@ -19,7 +22,9 @@ export function ModulePageClient({
   exercises: Exercise[];
 }) {
   const { locale, t } = useLanguage();
+  const { getExercise } = useProgress();
   const localizedModule = localizeModule(learningModule, locale);
+  const completed = exercises.filter((exercise) => getExercise(exercise.id).status === "correct").length;
 
   function difficultyLabel(difficulty: Exercise["difficulty"]) {
     if (difficulty === "basico") return t("difficultyBasico");
@@ -40,18 +45,33 @@ export function ModulePageClient({
           <CardContent className="space-y-3">
             <ModuleProgress moduleId={learningModule.id} />
             <p className="text-sm text-[color:var(--muted-text)]">
-              {learningModule.estimatedMinutes} {t("min")}
+              {completed}/{exercises.length} {t("statusCorrect")} · {learningModule.estimatedMinutes}{" "}
+              {t("min")}
             </p>
           </CardContent>
         </Card>
         <div className="space-y-3">
           {exercises.map((exercise, index) => {
             const localized = localizeExercise(exercise, locale);
+            const status = getExercise(exercise.id).status;
+            const done = status === "correct";
             return (
-              <Card key={exercise.id}>
+              <Card
+                key={exercise.id}
+                className={cn(
+                  "transition-colors",
+                  done && "border-[color:var(--success)]/40 bg-[color:var(--success-soft)]/40"
+                )}
+              >
                 <CardHeader className="pb-2">
                   <div className="flex flex-wrap items-center gap-2">
-                    <Badge variant="outline">#{index + 1}</Badge>
+                    {done ? (
+                      <span className="inline-flex size-7 items-center justify-center rounded-full bg-[color:var(--success)] text-white">
+                        <CheckCircle2 className="size-4" aria-hidden />
+                      </span>
+                    ) : (
+                      <Badge variant="outline">#{index + 1}</Badge>
+                    )}
                     <Badge>{difficultyLabel(exercise.difficulty)}</Badge>
                     <Badge variant="secondary">
                       {exercise.estimatedMinutes} {t("min")}

@@ -593,7 +593,7 @@ GROUP BY o.customer_id`,
     hints: [
       "GROUP BY producto, SUM(quantity), ORDER BY esa suma DESC.",
       "JOIN menu_items para ver el nombre.",
-      "LIMIT es opcional; el ranking completo también vale.",
+      "TOP es opcional; el ranking completo también vale.",
     ],
     referenceSql: `SELECT mi.name, SUM(oi.quantity) AS piezas
 FROM order_items oi

@@ -5,7 +5,7 @@ export function AppShell({ children, title }: { children: ReactNode; title?: str
   return (
     <div className="min-h-dvh overflow-x-hidden bg-[color:var(--page-bg)] text-[color:var(--ink)]">
       <AppNavbar title={title} />
-      <main className="mx-auto w-full max-w-[1600px] px-3 py-4 pb-[max(5.5rem,env(safe-area-inset-bottom))] sm:px-4 md:p-6 lg:pb-6">
+      <main className="mx-auto w-full max-w-[1600px] px-3 py-4 pb-[max(1.25rem,env(safe-area-inset-bottom))] sm:px-4 md:p-6">
         {children}
       </main>
     </div>

@@ -69,13 +69,19 @@ export function SqlEditor({
       ? "Write T-SQL here…\nExample: SELECT TOP 10 * FROM customers;"
       : "Escribe T-SQL aquí…\nEjemplo: SELECT TOP 10 * FROM customers;");
 
+  const showLabel = label !== "";
+
   if (!useHighlight) {
     return (
       <div className="space-y-2">
         <div className="flex items-center justify-between gap-2">
-          <label className="text-sm font-medium text-[color:var(--ink)]" htmlFor="sql-plain-editor">
-            {resolvedLabel}
-          </label>
+          {showLabel ? (
+            <label className="text-sm font-medium text-[color:var(--ink)]" htmlFor="sql-plain-editor">
+              {resolvedLabel}
+            </label>
+          ) : (
+            <span />
+          )}
           {mounted ? (
             <button
               type="button"
@@ -103,7 +109,11 @@ export function SqlEditor({
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between gap-2">
-        <label className="text-sm font-medium text-[color:var(--ink)]">{resolvedLabel}</label>
+        {showLabel ? (
+          <label className="text-sm font-medium text-[color:var(--ink)]">{resolvedLabel}</label>
+        ) : (
+          <span />
+        )}
         <button
           type="button"
           className="min-h-11 text-xs text-[color:var(--muted-text)] underline md:min-h-0"
